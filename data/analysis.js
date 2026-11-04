@@ -41,6 +41,7 @@ window.SL_ANALYSIS = {
           {zh: '① 按距离转弯：“前进 6 米后左转”；② 遇口转：“进入左侧第一个可通行开口”；③ 第 N 个口：“进入左侧第 2 个可通行开口”。', en: '① Turn at distance: “go 6 m then turn left”; ② first opening: “enter the first passable opening on the left”; ③ N-th opening: “enter the 2nd passable opening on the left”.'},
           {zh: '④ 停在某处：“前进 6 米后停车”；⑤ 走到头：“走到走廊尽头并停车”；⑥ 转弯再前进：转进门后再往前走一段。', en: '④ Stop at: “go 6 m then stop”; ⑤ corridor end: “go to the end of the corridor and stop”; ⑥ turn, then forward: turn through a door and continue some distance.'},
           {zh: '⑦ 窄道掉头：“在这里掉头”；⑨ 现在转还是下一个：“现在或下一个开口左转”；⑭ 纠正：先说一个目标，几秒后改口为另一个；⑮ 方向指令：只说方向，没有门。', en: '⑦ U-turn: “turn around here”; ⑨ now or next: “turn left at this or the next opening”; ⑭ correction: one target first, corrected a few seconds later; ⑮ direction: a direction only, no door.'},
+          {zh: '在哪里找：合成测试集有 ①②③④⑥⑨⑭；真实地图测试集有 ①②③⑥⑨；⑤ 走到头、⑦ 窄道掉头 以及全部九类在“说话变化与全类型测试”里（选“锁定集 2,160”最全）；⑮ 方向指令在“障碍物与场景族”里。', en: 'Where to find them: the synthetic test set has ①②③④⑥⑨⑭; the real-map test set has ①②③⑥⑨; ⑤ corridor end, ⑦ U-turn and all nine kinds are in “Speech variation & all-kind test” (the “Locked set 2,160” part has them all); ⑮ direction commands are in “Obstacles & families”.'},
         ],
         src: []},
      ]},

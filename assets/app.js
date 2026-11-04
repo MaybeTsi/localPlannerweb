@@ -28,7 +28,7 @@ const T = {
   eyebrowList: 'CPU 回放 · 已评分 · 真实轨迹', heroA: n => `${n} 类口头指令`, heroB: n => `${n} 种方法`, lede: '车式小车在室内按口头指令行驶的测试用例。每条含地图、起点、指令、目标结构，以及各方法的轨迹和评分。',
   m1: s => `本方法意图成功 · ${s}`, m1foot: '按类型', m2: s => `各方法意图成功 · ${s}`, m3: '集合状态', scored: '已评分', s6rates: '已评分；S6 各方法的成功率和配对区间见“分析”第 6 章，这里不另算。', devpub: '开发公开，无评分',
   outcomeOf: '结局', succ: '成功', fail: '失败', other: '未知 / 不适用', showing: '显示', of: '/', loadMore: '再加载', empty: '没有符合条件的用例。',
-  legend: '方法条：实心＝B 意图成功，空心＝失败，虚线＝不适用，点线＝未知，灰底＝无运行记录',
+  legend: '方法条：实心＝意图成功，空心＝失败，虚线＝不适用，点线＝未知，灰底＝无运行记录',
   orig: '原包', supp: '补包', dev: 'S1 开发', video: '视频',
   back: '返回列表', answer: '显示答案', cand: '本方法候选', literal: '字面落点', overlay: '叠加', split: '并排', slider: '拉杆',
   arms: '方法', hI: '意图', hL: '字面', hC: '无接触', hT: '用时 s', rateTitle: '本类意图成功', target: '目标', alcove: '不可通行',
@@ -38,21 +38,21 @@ const T = {
   counts: '用例数', countsSrc: '按场景库清单逐条计数', rates: '各方法意图成功', ratesNote: '格内为“成功 / 槽位”，与统计文件相同；未知另列。点击格子在下方查看逐例点阵。',
   dsHold: '留出合计', dsHO: '原包', dsHS: '补包', dsMM: '失配', dsNP: '夜跑主层', dsND: '夜跑 D 接触', total: '合计', dotsTitle: '逐例点阵', dotsNote: '一点＝一条用例（上方所选数据集），颜色为意图评分；点击打开该例。点表格中的格子切换类型和方法。',
   vidsTitle: '机制视频选例',
-  unknown: '未知', heroCap: n => `本方法实际轨迹 · 锁定留出 ${n} 条（每类前 30 条，C）· 橙＝B 意图成功，灰＝失败`, rejected: '编译被拒，停在起点', railOpen: '展开侧栏', railClose: '收起侧栏', railKey: '收起 / 展开', railKindNote: '本方法 B 成功', toDark: '切换到深色', toLight: '切换到浅色', dark: '深色', light: '浅色',
-  heroT: '本方法的真实行驶路线', heroS: n => `${n} 条锁定留出用例 · 全部从同一起点出发、向右行驶 · 单位 m`, hOk: 'B 判意图成功', hNo: '意图失败', hStart: '起点', hHint: '移到线上看是哪条用例，点击打开', hAll: '全部类型'},
+  unknown: '未知', heroCap: n => `本方法实际轨迹 · 锁定留出 ${n} 条（每类前 30 条，C）· 橙＝意图成功，灰＝失败`, rejected: '编译被拒，停在起点', railOpen: '展开侧栏', railClose: '收起侧栏', railKey: '收起 / 展开', railKindNote: '本方法成功', toDark: '切换到深色', toLight: '切换到浅色', dark: '深色', light: '浅色',
+  heroT: '本方法的真实行驶路线', heroS: n => `${n} 条锁定留出用例 · 全部从同一起点出发、向右行驶 · 单位 m`, hOk: '意图成功', hNo: '意图失败', hStart: '起点', hHint: '移到线上看是哪条用例，点击打开', hAll: '全部类型'},
  en: {brand: 'Scenario Library', brandSub: '测试场景库', views: 'Views', list: 'Cases', overview: 'Overview', sets: 'Sets', holdout: 'Locked holdout', ho: 'original', hs: 'supplement', s1d: 'S1 development', pending: 'TBD', sealed: 'sealed, not released', notGen: 'not generated',
   search: 'Search case_id or instruction', all: 'All', kinds: 'Instruction kind',
   kname: {'01': 'Turn at distance', '02': 'First opening', '03': 'N-th opening', '04': 'Stop at', '05': 'Corridor end', '06': 'Turn, then forward', '07': 'U-turn', '09': 'Now or next', '14': 'Correction', '15': 'Direction'},
   arm: {v16: 'v16', fixed: 'Fixed', goal_point: 'Goal point+HA*', nearest: 'Nearest', snap: 'Snap', method: 'Method', no_keep: 'No keep-literal', no_speed: 'No speed rule', always_slow: 'Always slow', method_v2: 'Method v2', method_v2_k: 'Method v2-K', oracle: 'Oracle GOTO (reference)', oracle_belief: 'Oracle belief', method_v3: 'Method v3', method_v4: 'Method v4', v4_no_speed: 'v4 no speed rule', v4_no_keep: 'v4 no keep-literal', v4_only_nownext: 'Only ⑨ fix', v4_only_correction: 'Only ⑭ fix', always_slow_fixed: 'Always slow (fixed)', oracle_due: 'oracle_due (knows target)'},
   setS: {HOLD: 'Locked holdout', S1: 'S1 synthetic', S2: 'S2 real floors', S3: 'S3 error scale', S4: 'S4 families', S1PP: 'S1″ synthetic (S6)', S2PP: 'S2″ real floors (S6)', DEV: 'Development'}, bd: {hospital: 'Hospital', office: 'Office'}, fam: {F0: 'F0 clutter', F1: 'F1 hall', F2: 'F2 corner / T', F3: 'F3 box in window', F4: 'F4 occlusion', F5: 'F5 false gap', F6: 'F6 direction'}, devS1: 'S1 dev', devS4: 'S4 dev',
-  setDesc: {HOLD: 'Locked holdout: original and supplement packs, 1,080 cases each, 240 per kind; scores and trajectories from the locked CPU evaluation.', S1: 'Synthetic corridors: candidate count K, opening side, alcove positions and target ordinal randomised; 7 kinds × 120, c = 0.25.', S2: 'Real floors: hospital and office building rasters, start 3 / 6 / 10 m from the door; the main estimate weights doors equally.', S3: 'S1 generator with error scale c = 0.15 / 0.35, kinds ①④⑥.', S4: 'Families F0–F6: clutter, hall, corner / T, box in window, occlusion, false gap, direction; rates reported per family.', S1PP: 'S6 synthetic corridors: 840 new input geometries, 7 kinds (①②③④⑥⑨⑭); every trajectory of the 12 arms (reference route). Scored; the target answers are not public yet, so they stay hidden.', S2PP: 'S6 real floors: 1,405 new starts and utterances on the same 30 real doors (hospital 9, office 21), not new buildings or doors; every trajectory of the 12 arms (reference route); B weights doors equally. Answers not public yet.', DEV: 'Development subsets: answers public, not scored, not reported.'},
+  setDesc: {HOLD: 'Locked holdout: original and supplement packs, 1,080 cases each, 240 per kind; scores and trajectories from the locked CPU evaluation.', S1: 'Synthetic corridors: candidate count K, opening side, alcove positions and target ordinal randomised; 7 kinds × 120, c = 0.25.', S2: 'Real floors: hospital and office building rasters, start 3 / 6 / 10 m from the door; the main estimate weights doors equally.', S3: 'S1 generator with error scale c = 0.15 / 0.35, kinds ①④⑥.', S4: 'Families F0–F6: clutter, hall, corner / T, box in window, occlusion, false gap, direction; rates reported per family.', S1PP: 'S6 synthetic corridors: 840 new input geometries, 7 kinds (①②③④⑥⑨⑭); every trajectory of the 12 arms (reference route). Scored; the target answers are not public yet, so they stay hidden.', S2PP: 'S6 real floors: 1,405 new starts and utterances on the same 30 real doors (hospital 9, office 21), not new buildings or doors; every trajectory of the 12 arms (reference route); doors are weighted equally. Answers not public yet.', DEV: 'Development subsets: answers public, not scored, not reported.'},
   stCases: 'cases', stTraj: 'with trajectory', stAns: 'answers', stScored: 'scored', stDev: 'public development', fSub: 'Subset', fKind: 'Kind', fOut: 'Outcome', legendT: 'Legend', pre: 'Compare', preAll: 'All', preNone: 'None', grpBase: 'Baselines', grpMe: 'Method and ablations', grpV2: 'New version', grpRef: 'Oracle reference', grpV4: 'v4 ablations',
   allSub: 'All', withTraj: 'With trajectory', trajNote: n => n ? `Trajectories: every locked-holdout case; first ${n} per group in S1–S4` : 'Trajectories: every scored case (development sets have no scores or runs)', noTraj: 'trajectory not included', s4nopool: 'S4 families are not pooled; pick one family above.', subWhy: {S2: 'building', S2PP: 'building', S3: 'error scale c', S4: 'family', DEV: 'source'},
-  rateSrc: 'Data', estTip: 'B estimate', armsOfSet: 'Methods in this set', ratesNote2: 'Cells are “success / slots” counts; hover for the main estimate and 95% interval (S2 weights doors equally). Unknown listed separately, never counted as success.', dsPick: 'Dataset', famCard: 'S4 families F1–F6', famNote2: 'First released S4 development case of each family (answers public), drawn from the library map; orange box = target structure.', dirTarget: 'direction',
+  rateSrc: 'Data', estTip: 'Main estimate', armsOfSet: 'Methods in this set', ratesNote2: 'Cells are “success / slots” counts; hover for the main estimate and 95% interval (S2 weights doors equally). Unknown listed separately, never counted as success.', dsPick: 'Dataset', famCard: 'S4 families F1–F6', famNote2: 'First released S4 development case of each family (answers public), drawn from the library map; orange box = target structure.', dirTarget: 'direction',
   eyebrowList: 'CPU replay · scored · recorded trajectories', heroA: n => `${n} spoken instruction kinds`, heroB: n => `${n} methods`, lede: 'Test cases of a car-like robot following spoken indoor instructions: map, start, instruction and target structure, with each method’s trajectory and scores.',
   m1: s => `Method intent success · ${s}`, m1foot: 'by kind', m2: s => `Intent success by method · ${s}`, m3: 'Set status', scored: 'scored', s6rates: 'Scored; S6 rates per method and paired intervals are in Analysis, chapter 6; not recomputed here.', devpub: 'public development, unscored',
   outcomeOf: 'Outcome', succ: 'success', fail: 'failure', other: 'unknown / N/A', showing: 'Showing', of: '/', loadMore: 'Load more', empty: 'No case matches.',
-  legend: 'Method strip: filled = B intent success, hollow = failure, dashed = not applicable, dotted = unknown, grey = no run',
+  legend: 'Method strip: filled = intent success, hollow = failure, dashed = not applicable, dotted = unknown, grey = no run',
   orig: 'original', supp: 'supplement', dev: 'S1 dev', video: 'video',
   back: 'Back to cases', answer: 'Show answer', cand: 'Method candidates', literal: 'Literal point', overlay: 'Overlay', split: 'Side by side', slider: 'Slider',
   arms: 'Methods', hI: 'INT', hL: 'LIT', hC: 'NC', hT: 'time s', rateTitle: 'Intent success for this kind', target: 'target', alcove: 'not passable',
@@ -62,12 +62,13 @@ const T = {
   counts: 'Case counts', countsSrc: 'Counted from the library index', rates: 'Intent success by method', ratesNote: 'Cells show “success / slots” as in the statistics files; unknown listed separately. Click a cell to see the per-case dots below.',
   dsHold: 'Holdout total', dsHO: 'Original', dsHS: 'Supplement', dsMM: 'Mismatch', dsNP: 'Night primary', dsND: 'Night D-exposed', total: 'Total', dotsTitle: 'Per-case dots', dotsNote: 'One dot = one case of the dataset chosen above, coloured by intent score; click to open it. Click a table cell to switch kind and method.',
   vidsTitle: 'Mechanism-video selections',
-  unknown: 'unknown', heroCap: n => `Actual method trajectories · ${n} locked-holdout cases (first 30 per kind, C) · orange = B intent success, grey = failure`, rejected: 'compile rejected, stays at start', railOpen: 'Expand sidebar', railClose: 'Collapse sidebar', railKey: 'collapse / expand', railKindNote: 'method · B success', toDark: 'Switch to dark', toLight: 'Switch to light', dark: 'Dark', light: 'Light',
-  heroT: 'Where the method actually drove', heroS: n => `${n} locked-holdout cases · all start at the same point and drive right · metres`, hOk: 'B intent success', hNo: 'intent failure', hStart: 'start', hHint: 'Hover a line to see its case; click to open', hAll: 'all kinds'}};
+  unknown: 'unknown', heroCap: n => `Actual method trajectories · ${n} locked-holdout cases (first 30 per kind, C) · orange = intent success, grey = failure`, rejected: 'compile rejected, stays at start', railOpen: 'Expand sidebar', railClose: 'Collapse sidebar', railKey: 'collapse / expand', railKindNote: 'method · success', toDark: 'Switch to dark', toLight: 'Switch to light', dark: 'Dark', light: 'Light',
+  heroT: 'Where the method actually drove', heroS: n => `${n} locked-holdout cases · all start at the same point and drive right · metres`, hOk: 'intent success', hNo: 'intent failure', hStart: 'start', hHint: 'Hover a line to see its case; click to open', hAll: 'all kinds'}};
 let L = store.get('lang', 'zh');
 const t = k => T[L][k];
 function instr(e) {
-  if (L === 'zh') return e.tx;
+  const sec = v => String(+(+v).toFixed(1));
+  if (L === 'zh') return e.k === '14' && e.u.corrected_at_s != null ? `先指某扇门，${sec(e.u.corrected_at_s)} 秒后纠正为下一个${e.u.direction === 'left' ? '左' : '右'}侧开口` : e.tx;
   const u = e.u, d = u.direction;
   switch (e.k) {
     case '01': return `Go ${u.distance_m} m, then turn ${d} 90°`;
@@ -78,7 +79,7 @@ function instr(e) {
     case '06': return `Go ${u.distance_m} m, turn ${d} through the door, then ${u.follow_forward_m} m on`;
     case '07': return 'Turn around here';
     case '09': return `Turn ${d} at this or the next opening (spoken at ${u.issued_at_s} s)`;
-    case '14': return `First ${u.initial_target}; at ${u.corrected_at_s} s corrected to the next ${d} opening`;
+    case '14': return `First points to a door; at ${sec(u.corrected_at_s)} s corrected to the next ${d} opening`;
     case '15': { const m = /向(左|右)前方行驶\s*([\d.]+)\s*米/.exec(e.tx); return m ? `Drive ahead-${m[1] === '左' ? 'left' : 'right'} for ${m[2]} m` : e.tx; }
     default: return e.tx;
   }

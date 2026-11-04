@@ -361,7 +361,7 @@ function renderList() {
    <div class="eyebrow"><span class="dot"></span>${t('eyebrowList')}</div>
    <h1 class="h">${NAV === 'title' ? `<button class="tsel" id="tsel" aria-expanded="false">${esc(cur.label)}<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>` : esc(cur.label)}${state.sub !== 'all' ? `<span class="hsub">${esc(subLabel(state.sub))}</span>` : ''}</h1>
    <p class="lede">${t('setDesc')[state.set]}</p>
-   <div class="stats"><span><b>${fmt(nAll)}</b>${t('stCases')}</span><span><b>${fmt(nTr)}</b>${t('stTraj')}</span><span class="chip ${cur.scored ? 'ink' : 'blue'}">${cur.scored ? t('stScored') : t('stDev')}</span></div></div>
+   <div class="stats"><span><b>${fmt(nAll)}</b>${t('stCases')}</span><span><b>${fmt(nTr)}</b>${t('stTraj')}</span><span class="chip ${cur.scored ? 'ink' : 'blue'}">${cur.scored ? t('stScored') : t('stDev')}</span><a class="chip dash" href="#analysis/guide">${L === 'zh' ? '这些是什么意思？' : 'What do these mean?'}</a></div></div>
   <div class="metrics">
    <article class="card metric"><div class="card-h"><span class="tile">M</span><h3>${MA === 'method' ? t('m1')(dsName) : `${t('arm')[MA]} · ${dsName}`}</h3><span class="more">${t('m1foot')}</span></div>
     ${ds ? `<div class="big"><b id="m1n">0</b><span>/ ${fmt(all && all.slots)}</span></div>
@@ -672,7 +672,7 @@ function renderAnalysis(anchor) {
   topbar(`<a href="#list">${t('list')}</a><i>/</i><b>${z ? '分析' : 'Analysis'}</b>`);
   if (!A) { $('#page').innerHTML = `<p class="note">data/analysis.js missing</p>`; return; }
   const chip = c => `<span class="chip ${c.k === 'acc' ? 'acc' : 'dash'}">${esc(tx(c))}</span>`;
-  const src = xs => `<details class="srcs"><summary>${z ? '数据来源' : 'Sources'} · ${xs.length}</summary><ul>${xs.map(x => `<li>${esc(pubSrc(x))}</li>`).join('')}</ul></details>`;
+  const src = xs => !xs || !xs.length ? '' : `<details class="srcs"><summary>${z ? '数据来源' : 'Sources'} · ${xs.length}</summary><ul>${xs.map(x => `<li>${esc(pubSrc(x))}</li>`).join('')}</ul></details>`;
   const fig = id => `analysis/${id}_${z ? 'zh' : 'double'}.png`;
   const item = (it, ci) => {
     const head = `<div class="ah"><h3>${esc(z ? it.zh : it.en)}</h3>${(it.chips || []).map(chip).join('')}</div>`;

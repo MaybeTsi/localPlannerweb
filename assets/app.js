@@ -599,7 +599,7 @@ function mountCase(e, det) {
 }
 
 /* ---------------- overview ---------------- */
-const DS_ALL = ['holdout', 'holdout_original', 'holdout_supplement', 'mismatch', 'night_primary', 'night_D_exposed', 'S1', 'S2', 'S2:hospital', 'S2:office', 'S1′', 'S2′', 'S2′:hospital', 'S2′:office', 'S1″', 'S2″', 'S2″:hospital', 'S2″:office', 'S3', 'S3:c=0.15', 'S3:c=0.35', 'S4_F0', 'S4_F1', 'S4_F2', 'S4_F3', 'S4_F4', 'S4_F5', 'S4_F6'];
+const DS_ALL = ['holdout', 'holdout_original', 'holdout_supplement', 'mismatch', 'S1', 'S2', 'S2:hospital', 'S2:office', 'S1′', 'S2′', 'S2′:hospital', 'S2′:office', 'S1″', 'S2″', 'S2″:hospital', 'S2″:office', 'S3', 'S3:c=0.15', 'S3:c=0.35', 'S4_F0', 'S4_F1', 'S4_F2', 'S4_F3', 'S4_F4', 'S4_F5', 'S4_F6'];
 /* cases behind a statistics dataset (for the per-case dots); null when the dataset is not a set of library cases */
 function dsCases(ds) { if (ds === 'holdout') return e => e.d === 'HO' || e.d === 'HS'; if (ds === 'holdout_original') return e => e.d === 'HO'; if (ds === 'holdout_supplement') return e => e.d === 'HS';
   if (ds === 'S1' || ds === 'S2' || ds === 'S3') return e => e.d === ds; { const [h, b] = ds.split(':'), k = Object.keys(PRIME).find(x => PRIME[x] === h); if (k) return e => e.d === k && (!b || e.bd === b); } if (ds.startsWith('S2:')) return e => e.d === 'S2' && e.bd === ds.slice(3); if (ds.startsWith('S3:')) return e => e.d === 'S3' && 'c=' + e.c === ds.slice(3);
@@ -679,10 +679,13 @@ function renderAnalysis(anchor) {
   $('#page').innerHTML = `<section class="shead"><div class="sh-l"><div class="eyebrow"><span class="dot"></span>${z ? '数据分析' : 'Data analysis'}</div>
     <h1 class="h">${z ? '分析' : 'Analysis'}</h1><p class="lede">${z ? '每节一张图或一张表，加两三句说明；每个数字的来源写在卡片下方。' : 'One figure or table per item with a few plain sentences; the source of every number is listed under each card.'}</p>
     <nav class="atoc">${A.chapters.map(c => `<a href="#analysis/${c.id}">${c.no} · ${esc(z ? c.zh : c.en)}</a>`).join('')}</nav></div></section>
-   ${A.chapters.map(c => `<section class="achap" id="ch-${c.id}"><div class="ach"><span class="tile">${c.no}</span><h2>${esc(z ? c.zh : c.en)}</h2></div>${c.lede ? `<p class="lede">${esc(tx(c.lede))}</p>` : ''}
+   ${A.chapters.filter(c => !c.fold).map(c => `<section class="achap" id="ch-${c.id}"><div class="ach"><span class="tile">${c.no}</span><h2>${esc(z ? c.zh : c.en)}</h2></div>${c.lede ? `<p class="lede">${esc(tx(c.lede))}</p>` : ''}
      <div class="agrid ${c.id === 'earlier' ? 'small' : ''}">${c.items.map(item).join('')}</div></section>`).join('')}
+   ${A.chapters.some(c => c.fold) ? `<details class="afold" id="ch-fold"><summary><span class="tile">+</span><b>${z ? '补充实验（早期版本）' : 'Supplementary experiments (earlier versions)'}</b><em>${z ? '基于 v1 / v2 的原始图，保留备查；主结果见上方' : 'original figures based on v1 / v2, kept for reference; main results above'}</em></summary>
+     ${A.chapters.filter(c => c.fold).map(c => `<section class="achap" id="ch-${c.id}"><div class="ach"><span class="tile">${c.no}</span><h2>${esc(z ? c.zh : c.en)}</h2></div>${c.lede ? `<p class="lede">${esc(tx(c.lede))}</p>` : ''}
+     <div class="agrid ${c.id === 'earlier' ? 'small' : ''}">${c.items.map(item).join('')}</div></section>`).join('')}</details>` : ''}
    <p class="afootnote">${esc(tx(A.footer))}</p>`;
-  if (anchor) { const el = document.getElementById('ch-' + anchor); if (el) setTimeout(() => el.scrollIntoView({block: 'start'}), 30); }
+  if (anchor) { const el = document.getElementById('ch-' + anchor); if (el && el.closest('details')) el.closest('details').open = true; if (el) setTimeout(() => el.scrollIntoView({block: 'start'}), 30); }
 }
 
 /* ---------------- boot ---------------- */

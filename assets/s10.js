@@ -1,6 +1,6 @@
 /* S10 views (main method v6): leaderboards per subset, confusion table, stratified scores, per-subset differences, per-case page.
    Data: window.SL_S10 (data/s10/meta.js, B's own tables copied), data/s10/cases/<key>.js (per-slot public fields),
-   data/s10/traj/<key>__<n>.js (sampled trajectories). Nothing is computed here except display formatting;
+   data/s10/traj/<key>__<n>.js (trajectories of every case and arm). Nothing is computed here except display formatting;
    every number comes from B's files named in SL_S10.sources. Loaded after app.js, which exposes window.SLX. */
 (function () {
 'use strict';
@@ -193,7 +193,7 @@ function mount(id, c, tr) {
     <div class="eyebrow"><span class="dot"></span>${KN[c.k] || c.k} · ${esc(id)}</div>
     <div class="dict"><span class="mic idle"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2.5" width="6" height="10" rx="3"/><path d="M4 10a6 6 0 0 0 12 0M10 16v2"/></svg></span><h1>${esc(instr)}</h1></div></div>
     <div class="dgrid"><div style="min-width:0"><section class="card stagecard"><div class="stools"><button class="sw2 ${state48.show ? 'on' : ''}" id="s10show"><i></i>${T('显示真实意图', 'Show true intent')}</button>
-      ${Object.keys(tr).length ? ORDER.filter(a => tr[a]).map(a => `<button class="sw2 on s10tog" data-a="${a}"><i></i>${esc(armName(a))}</button>`).join('') : `<span class="note" style="padding:0">${T('这一题没有收录轨迹（只抽样收录）', 'No trajectory for this case (sampled)')}</span>`}</div>
+      ${Object.keys(tr).length ? ORDER.filter(a => tr[a]).map(a => `<button class="sw2 on s10tog" data-a="${a}"><i></i>${esc(armName(a))}</button>`).join('') : `<span class="note" style="padding:0">${T('这一题没有轨迹记录', 'No trajectory record for this case')}</span>`}</div>
       <div class="stage"><canvas id="s10cv" style="height:${Math.round(Math.min(520, Math.max(300, innerWidth * .4)))}px"></canvas></div></section>
       <section class="card" style="margin-top:14px"><div class="card-h"><span class="tile">?</span><h3>${T('你认为该怎么做？', 'What do you think it should do?')}</h3><span class="more">${T('只存在你的浏览器里', 'stored only in your browser')}</span></div>
         <div class="picks">${choose.map(([k, l, col]) => `<button class="pk ${mine === k ? 'on' : ''}" data-k="${k}" style="--c:${col}">${esc(l)}</button>`).join('')}</div><div id="s10reveal" class="note"></div></section></div>

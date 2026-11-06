@@ -63,7 +63,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--b-ref', default='e926eea6')
     ap.add_argument('--c-ref', default='origin/codex/junction-decision-20261028')
-    ap.add_argument('--traj-per-dataset', type=int, default=60, help='cases per dataset (and kind) with v6 / literal trajectories; 0 = none')
+    ap.add_argument('--traj-per-dataset', type=int, default=-1, help='cases per dataset (and kind) with trajectories; -1 = every case and every arm (default); 0 = none')
     ap.add_argument('--repo', default=None)
     args = ap.parse_args()
     repo = args.repo or bd.sh('git', 'rev-parse', '--show-toplevel', cwd=HERE).strip()
@@ -136,7 +136,9 @@ def main():
             if u.get('follow_forward_m') is not None:
                 entry['fw'] = u['follow_forward_m']
             out[cid] = entry
-            if args.traj_per_dataset and per_kind[kind] < max(1, args.traj_per_dataset // 10):
+            if args.traj_per_dataset < 0:
+                picked.append(cid)
+            elif args.traj_per_dataset and per_kind[kind] < max(1, args.traj_per_dataset // 10):
                 per_kind[kind] += 1
                 picked.append(cid)
         cases[ds] = out
@@ -145,7 +147,7 @@ def main():
         chunks = {}
         for cid in picked:
             row = {}
-            for arm in ('method_v6', 'literal_if_feasible'):
+            for arm in ARMS:
                 s = runtime_all[ds][1].get((cid, arm))
                 if not s or not s.get('source_path'):
                     continue
@@ -174,7 +176,7 @@ def main():
                 'rates': f'B {Bc[:9]} · {D}/FORMAL_RATES.csv', 'confusion': f'B {Bc[:9]} · {D}/FORMAL_CONFUSION.csv',
                 'strata': f'B {Bc[:9]} · {D}/FORMAL_POSTERIOR_STRATA.csv', 'diffs': f'B {Bc[:9]} · {D}/S10_NUMBERS.json (comparisons), REPORT.md',
                 'cases': f'B {Bc[:9]} · {D}/release/runtime/*, {D}/formal_scores/*/SCORES_V3.jsonl, {D}/REFERENCE_DECISIONS_PUBLIC.jsonl',
-                'traj': f'C {Cc[:9]} · raw records named in each B score (sample)'},
+                'traj': f'C {Cc[:9]} · raw records named in each B score'},
             'not_exported': ['true_intent', 'candidates', 'posterior', 'expected_scores'], 'traj_per_dataset': args.traj_per_dataset}
 
     dump = lambda o: json.dumps(o, ensure_ascii=False, separators=(',', ':'))

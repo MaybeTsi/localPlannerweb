@@ -1,4 +1,4 @@
-/* S10 views (main method v6): leaderboards per subset, confusion table, stratified scores, per-subset differences, per-case page.
+/* S10 views (full record of v6.11, the development set of R13): leaderboards per subset, confusion table, stratified scores, per-subset differences, per-case page.
    Data: window.SL_S10 (data/s10/meta.js, B's own tables copied), data/s10/cases/<key>.js (per-slot public fields),
    data/s10/traj/<key>__<n>.js (trajectories of every case and arm). Nothing is computed here except display formatting;
    every number comes from B's files named in SL_S10.sources. Loaded after app.js, which exposes window.SLX. */
@@ -21,8 +21,8 @@ const SUB = [ // key, B dataset, zh, en, note
 const REAL_SPLIT = [['S10_REAL/hospital', '医院', 'Hospital'], ['S10_REAL/office', '办公室', 'Office']];
 const ARMS7 = S.arms;
 const ORDER = ['method_v6', 'literal_if_feasible', 'method_v4', 'nearest', 'v16', 'v6_pi0_zero', 'v6_no_speed'];
-const BEHAV = {L: {zh: '照字面完成', en: 'Literal completed'}, S: {zh: '进入结构', en: 'Entered a structure'}, R: {zh: '报告', en: 'Reported'}, I: {zh: '未完成', en: 'Incomplete'},
-  C: {zh: '碰撞', en: 'Collision'}, '?': {zh: '未知', en: 'Unknown'}, M: {zh: '未知（多个结构）', en: 'Unknown (several structures)'}};
+const BEHAV = {L: {zh: '照字面完成', en: 'Literal completed'}, S: {zh: '进入某个门', en: 'Entered an opening'}, R: {zh: '报告', en: 'Reported'}, I: {zh: '未完成', en: 'Incomplete'},
+  C: {zh: '碰撞', en: 'Collision'}, '?': {zh: '判不出', en: 'Undecided'}, M: {zh: '判不出（符合多个门）', en: 'Undecided (several openings)'}};
 const BEH_LONG = {LITERAL_COMPLETED: 'L', STRUCTURE: 'S', STOP_REPORT: 'R', INCOMPLETE: 'I', COLLISION: 'C', UNKNOWN: '?', UNKNOWN_MULTIPLE_STRUCTURES: 'M'};
 const INTENT = {literal: {zh: '字面', en: 'Literal'}, structure: {zh: '结构', en: 'Structure'}, none: {zh: '不存在', en: 'None exists'}};
 const STRATA = {CLEAR: {zh: '意图明确', en: 'Clear intent'}, LITERAL_STRUCTURE_AMBIGUITY: {zh: '字面与结构歧义', en: 'Literal vs structure ambiguous'},
@@ -58,7 +58,7 @@ function board(scope, title, src) {
   const best = Math.max(...rows.map(r => r.mean_geometry_equal_score));
   return `<article class="card s10b"><div class="card-h"><h3>${esc(title)}</h3><span class="more">${esc(scope)} · ${fmt(rows[0].generated)} ${T('题', 'cases')}</span></div>
    <div class="tbl"><table class="t s10t"><thead><tr><th>${T('方法', 'Method')}</th><th>${T('平均得分', 'Mean score')}</th><th>${T('完成率', 'Completion')}</th><th>${T('参考一致率', 'Reference match')}</th><th>${T('严重错误率', 'Severe error')}</th></tr></thead><tbody>
-   ${rows.map(r => `<tr class="${r.arm === 'method_v6' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[r.arm] || 'var(--sand8)'}"></span>${esc(armName(r.arm))}</td>
+   ${rows.map(r => `<tr class="${''}"><td class="nm"><span class="sw" style="background:${ARMC[r.arm] || 'var(--sand8)'}"></span>${esc(armName(r.arm))}</td>
      <td class="c"><b>${f3(r.mean_geometry_equal_score)}</b><span class="u">${esc(ci(r.ci95))}</span><span class="bar"><i style="width:${Math.max(0, r.mean_geometry_equal_score) / Math.max(best, 1e-9) * 100}%"></i></span></td>
      <td class="c">${pct(r.intent_completion_all_generated)}<span class="u">${fmt(r.intent_completed_plus1)} / ${fmt(r.generated)}</span></td>
      <td class="c">${pct(r.strict_rate_identifiable)}<span class="u">${fmt(r.strict_matches)} / ${fmt(r.identifiable_reference_comparisons)}</span></td>
@@ -113,12 +113,12 @@ function dataHTML() {
     if (x.key === 'real') return board('S10_REAL', T('真实地图（合计）', 'Real maps (all)')) + REAL_SPLIT.map(([sc, zh, en]) => board(sc, T('真实地图 · ' + zh, 'Real maps · ' + en))).join('');
     return board(x.ds, x.label);
   }).join('');
-  return `<section class="s10data" id="s10data"><div class="eyebrow" style="margin-top:34px"><span class="dot"></span>${T('每个子集的成绩', 'Scores per subset')} · B ${esc(S.b.slice(0, 9))}</div>
-    <p class="lede" style="margin:6px 0 12px">${T('每条指令都有真实意图：照字面、进某个结构，或这个结构根本不存在。主方法 v6 在字面和各结构之间按期望得分选一个，只在没有可执行动作也没有安全观测时才报告。', 'Every instruction has a true intent: the literal reading, a structure, or none exists. The main method v6 picks among the literal reading and the structures by expected score, and reports only when there is neither an executable action nor a safe observation.')}</p>
+  return `<section class="s10data" id="s10data"><div class="eyebrow" style="margin-top:10px"><span class="dot"></span>${T('每个测试集的成绩', 'Scores per test set')} · B ${esc(S.b.slice(0, 9))}</div>
+    <p class="lede" style="margin:6px 0 12px">${T('每条指令都有出题时设定的意图：照字面、进某个门，或这个门根本不存在。上一版 v6.11 在“照字面走”和各个门之间按期望得分选一个，只在没有可执行动作也没有安全观测时才报告；它不会绕过挡路的箱子。这是 R13 调试时用的测试集（称 S10），有完整评分。', 'Every instruction has a true intent: the literal reading, a structure, or none exists. The previous version v6.11 picks between following the words and the openings by expected score, and reports only when there is neither an executable action nor a safe observation; it does not go around a box in the way. This is the test set used to tune R13 (called S10), fully scored.')}</p>
     ${chips}
     <div class="agrid s10grid" style="margin-top:14px">${!cur ? `<article class="card s10hero"><div class="card-h"><h3>${T('主集上的主比较', 'Primary comparison on the main set')}</h3></div>
-      <div class="big2"><div><b>${f3(mainR.mean_geometry_equal_score)}</b><span>v6 ${T('平均得分', 'mean score')}</span></div><div><b>${f3(litR.mean_geometry_equal_score)}</b><span>${T('字面可行就照字面', 'literal if feasible')}</span></div>
-      <div><b>${pct(mainR.intent_completion_all_generated)}</b><span>v6 ${T('完成率', 'completion')}</span></div><div><b>${pct(mainR.strict_rate_identifiable)}</b><span>v6 ${T('与参考一致', 'reference match')}</span></div></div>
+      <div class="big2"><div><b>${f3(mainR.mean_geometry_equal_score)}</b><span>v6.11 ${T('平均得分', 'mean score')}</span></div><div><b>${f3(litR.mean_geometry_equal_score)}</b><span>${T('字面可行就照字面', 'literal if feasible')}</span></div>
+      <div><b>${pct(mainR.intent_completion_all_generated)}</b><span>v6.11 ${T('完成率', 'completion')}</span></div><div><b>${pct(mainR.strict_rate_identifiable)}</b><span>v6.11 ${T('与参考一致', 'reference match')}</span></div></div>
       <p class="note">${T('每题分数：完成真实意图 +1，安全报告 +0.3，没有完成 0，严重错误 −1。', 'Per-case score: true intent completed +1, safe report +0.3, not completed 0, severe error −1.')}</p>
       <div class="note src">${esc(S.sources.rates)}</div></article>` : ''}${boards}</div></section>`;
 }
@@ -128,20 +128,15 @@ function bindData(root) {
 }
 
 /* ---------- side panel of the case viewer ---------- */
-const decName = d => d == null ? '—' : d === 'LITERAL' ? T('照字面', 'literal') : d === 'REPORT' ? T('报告', 'report') : T('结构 ', 'structure ') + d;
-const NOEXP = () => `<span class="nexp">${T('未导出', 'not exported')}</span>`;
+const decName = d => d == null ? '—' : d === 'LITERAL' ? T('照字面', 'literal') : d === 'REPORT' ? T('报告', 'report') : T('门 ', 'opening ') + d;
 function side(e, d, presets, ARMS_ORDER) {
   const c = e._c;
   const lit = c.lit ? c.lit[0] : null;
   const refd = (c.a.method_v6 && c.a.method_v6[6]) || (c.a.literal_if_feasible && c.a.literal_if_feasible[6]) || null;
-  const refLabel = refd == null ? T('参考未知', 'reference unknown') : refd === 'LITERAL' ? T('照字面', 'follow the literal reading') : refd === 'REPORT' ? T('报告', 'report') : T('进入结构 ', 'enter structure ') + refd;
+  const refLabel = refd == null ? T('参考未知', 'reference unknown') : refd === 'LITERAL' ? T('照字面', 'follow the literal reading') : refd === 'REPORT' ? T('报告', 'report') : T('进入门 ', 'enter opening ') + refd;
   const litCat = {EXACT: T('有见证（原参数）', 'witness exists (exact parameters)'), WITHIN_1M: T('有见证（纵向偏移 ≤1 m）', 'witness exists (≤1 m longitudinal offset)'), INFEASIBLE: T('该运动族内无见证', 'no witness in the motion family'), UNDEFINED: T('未定义', 'undefined')};
-  return `<section class="card"><div class="card-h"><span class="tile">≡</span><h3>${T('这一题', 'This case')}</h3></div><dl class="kv">
-    <dt>${T('字面可行性（有限运动族的静态见证）', 'Literal feasibility (static witness in a finite motion family)')}</dt><dd>${lit ? `${esc(litCat[lit] || lit)}${c.lit[1] !== c.lit[0] ? ` <span class="u">(${T('规划车体：', 'planning body: ')}${esc(litCat[c.lit[1]] || c.lit[1])})</span>` : ''}` : NOEXP()}</dd>
-    <dt>${T('参考的决策', 'Reference decision')}</dt><dd>${esc(refLabel)}</dd>
-    <dt>${T('三种做法的期望得分', 'Expected score of the three options')}</dt><dd>${NOEXP()}</dd>
-    <dt>${T('候选结构', 'Candidates')}</dt><dd>${NOEXP()}</dd>
-    <dt>${T('真实意图', 'True intent')}</dt><dd id="s10true">${NOEXP()}</dd></dl>
+  return `<div id="anspanel"></div>
+    <section class="card"><p class="note" style="padding:10px 16px 0">${T('打开“显示真实意思”看这一题的答案（答案已公开，这个测试集不再能当盲测）。', 'Switch on “Show the intended meaning” to see this case’s answer (the answers are public, so this test set can no longer serve as a blind test).')}</p>
     <div class="note src">${esc(S.sources.cases)}</div></section>
   <section class="card"><div class="card-h"><span class="tile">≡</span><h3>${T('各方法做了什么', 'What each method did')}</h3><span class="more">${T('点一行显示 / 隐藏轨迹', 'click a row to show / hide')}</span></div>
     <div class="presets"><span class="flab" style="align-self:center">${T('预设', 'Presets')}</span>${presets.filter(p => p[1].every(a => d.arms[a])).map((p, i) => `<button data-pre="${i}">${p[0]}</button>`).join('')}</div>
@@ -151,8 +146,6 @@ function side(e, d, presets, ARMS_ORDER) {
     <div class="note">${T('颜色：', 'Colour: ')}<span class="lg1" style="background:#12A594"></span>+1 <span class="lg1" style="background:#F5AE73"></span>+0.3 <span class="lg1" style="background:var(--sand7)"></span>0 <span class="lg1" style="background:#E5484D"></span>−1</div></section>`;
 }
 /* "show true intent": B has not exported it, so the switch says so instead of guessing */
-function showTrue(on) { const el = document.getElementById('s10true'); if (!el) return;
-  el.innerHTML = on ? `${NOEXP()} <span class="u">${T('B 的私有字段；导出后这里显示字面 / 结构 / 不存在', 'B-private field; once exported this shows literal / structure / none')}</span>` : NOEXP(); }
 const badge = q => { const u = q && q[1]; return {c: utilColor(u), t: utilText(u), fg: u != null && u !== 0 ? '#fff' : 'var(--ink2)'}; };
 const behLabel = q => q ? ((BEHAV[q[0]] || {})[z() ? 'zh' : 'en'] || q[0]) : '';
 
@@ -162,7 +155,7 @@ function confusionTable() {
   const arms = ['method_v6', 'literal_if_feasible', 'method_v4'];
   const trues = ['literal', 'structure', 'none']; const behs = ['LITERAL_COMPLETED', 'STRUCTURE', 'STOP_REPORT', 'INCOMPLETE', 'COLLISION', 'UNKNOWN', 'UNKNOWN_MULTIPLE_STRUCTURES'];
   const get = (arm, tr, b) => S.confusion.filter(r => r.ds === 'S10_MAIN_SYNTH' && r.arm === arm && r.true === tr && r.beh === b).reduce((s, r) => s + r.n, 0);
-  const head = `<tr><th rowspan="2">${T('真实意图', 'True intent')}</th>${arms.map(a => `<th colspan="${behs.length}" class="grp">${esc(armName(a))}</th>`).join('')}</tr><tr>${arms.map(() => behs.map(b => `<th>${esc(BEHAV[BEH_LONG[b]][z() ? 'zh' : 'en'])}</th>`).join('')).join('')}</tr>`;
+  const head = `<tr><th rowspan="2">${T('真实意思', 'Intended meaning')}</th>${arms.map(a => `<th colspan="${behs.length}" class="grp">${esc(armName(a))}</th>`).join('')}</tr><tr>${arms.map(() => behs.map(b => `<th>${esc(BEHAV[BEH_LONG[b]][z() ? 'zh' : 'en'])}</th>`).join('')).join('')}</tr>`;
   const body = trues.map(tr => `<tr><td class="nm">${esc(INTENT[tr][z() ? 'zh' : 'en'])}<span class="u">${fmt(arms.map(a => behs.reduce((s, b) => s + get(a, tr, b), 0))[0])}</span></td>${arms.map(a => {
     const tot = behs.reduce((s, b) => s + get(a, tr, b), 0);
     return behs.map(b => { const n = get(a, tr, b); const good = (tr === 'literal' && b === 'LITERAL_COMPLETED') || (tr === 'structure' && b === 'STRUCTURE') || (tr === 'none' && b === 'STOP_REPORT'); const bad = b === 'COLLISION' || (tr === 'none' && b === 'STRUCTURE') || (tr === 'literal' && b === 'STRUCTURE') || (tr === 'structure' && b === 'LITERAL_COMPLETED');
@@ -183,13 +176,13 @@ function diffTable() {
   const all = scopes.map(([sc, lab]) => { const d = S.diffs.find(x => x.scope === sc && x.left === 'method_v6' && x.right === 'literal_if_feasible'); return d && {sc, lab, d}; }).filter(Boolean);
   const lo = Math.min(...all.map(x => x.d.known_ci95[0]), 0) - .02, hi = Math.max(...all.map(x => x.d.known_ci95[1])) + .02;
   const X0 = v => (v - lo) / (hi - lo) * 100;
-  return `<div class="tbl"><table class="t dft"><thead><tr><th>${T('子集', 'Subset')}</th><th>${T('v6 − 字面可行就照字面（平均得分差）', 'v6 − literal if feasible (mean-score difference)')}</th><th>${T('差值 [95% 区间]', 'Difference [95% CI]')}</th><th>${T('已知 / 全部配对', 'Known / all pairs')}</th></tr></thead><tbody>
+  return `<div class="tbl"><table class="t dft"><thead><tr><th>${T('子集', 'Subset')}</th><th>${T('v6.11 − 字面可行就照字面（平均得分差）', 'v6.11 − literal if feasible (mean-score difference)')}</th><th>${T('差值 [95% 区间]', 'Difference [95% CI]')}</th><th>${T('已知 / 全部配对', 'Known / all pairs')}</th></tr></thead><tbody>
   ${all.map(({sc, lab, d}) => `<tr class="${d.primary ? 'me' : ''}"><td class="nm">${esc(lab)}${d.primary ? `<span class="chip acc">${T('主比较', 'primary')}</span>` : ''}</td>
     <td class="plot"><div class="dplot"><i class="z" style="left:${X0(0)}%"></i><i class="ci" style="left:${X0(d.known_ci95[0])}%;width:${X0(d.known_ci95[1]) - X0(d.known_ci95[0])}%"></i><i class="pt" style="left:${X0(d.known_geometry_equal_difference)}%"></i></div></td>
     <td class="c"><b>${d.known_geometry_equal_difference >= 0 ? '+' : ''}${f3(d.known_geometry_equal_difference)}</b><span class="u">${esc(ci(d.known_ci95))}</span></td><td class="c">${fmt(d.known_pairs)} / ${fmt(d.generated_pairs)}</td></tr>`).join('')}
   </tbody></table></div><div class="note src">${esc(S.sources.diffs)}</div>`;
 }
 
-window.SLX.s10 = {load, loaded: id => !!loaded[id], setOfId, det, side, showTrue, dataHTML, bindData, confusionTable, strataTable, diffTable, board, badge, utilColor, behLabel, SETDEF, sets: Object.keys(SETDEF)};
+window.SLX.s10 = {load, loaded: id => !!loaded[id], setOfId, det, side, dataHTML, bindData, confusionTable, strataTable, diffTable, board, badge, utilColor, behLabel, SETDEF, sets: Object.keys(SETDEF)};
 if (window.SLX.rerender && !window.SLX._s10ready) { window.SLX._s10ready = 1; window.SLX.rerender(); }
 })();

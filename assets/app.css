@@ -776,3 +776,7 @@ table.rkt td.c b{display:block}
 .rk{display:inline-block;margin-top:2px;padding:0 7px;border-radius:999px;font:600 10.5px var(--mono);color:var(--ink3);background:var(--fill)}
 .rk.r1{background:var(--accent);color:#fff}.rk.r2{background:var(--sand7);color:var(--ink)}
 .rkt{min-width:760px}
+
+.rkbars .rows{margin-top:4px}.rkn{font:700 12px var(--mono);color:var(--ink3);margin-right:4px;font-style:normal}
+.row.me .rkn{color:var(--accent-ink)}
+.rkdet>summary{cursor:pointer;font-size:13px;color:var(--ink2);padding:6px 2px}

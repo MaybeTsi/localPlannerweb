@@ -259,9 +259,29 @@ function rankHTML(compact) {
     <p class="note">${T('每一列是在这个测试集上给上面的方法按所选指标排名（并列同名次）。平均得分 = 单题得分（+1 完成，+0.3 没完成但安全地停下并报告，0 没完成，−1 严重错误）的平均，受 +0.3 权重影响，不是成功率；完成率 = 确认完成的题 ÷ 全部题；排名只是这几个指标上的名次，不是统计显著性。“全部题”含有箱子和没箱子两种版本。走廊堵死的题期望做法是停下报告，所以那一列的完成率不是目标。', 'Each column ranks the methods above on the chosen metric for that test set (ties share a rank). Mean score = average of the per-case score (+1 completed, +0.3 not completed but stopped safely and reported, 0 not completed, −1 severe error), affected by the +0.3 weight and not a success rate; completion rate = confirmed completed ÷ all cases; ranks are positions on these metrics, not statistical significance. “All cases” includes the with-box and no-box versions. In the corridor-blocked cases the expected behaviour is to stop and report, so completion is not the goal in that column.')}</p>
     <div class="note src">${esc(S.sources.rates)}</div>`;
 }
+const BK = {scope: 'ALL_LOGICAL', metric: 'comp'};
+function barsHTML() {
+  const m = BK.metric, low = m === 'sev', arms = RK_CORE;
+  const rows = arms.map(a => { const r = rate(BK.scope, a); if (!r) return null;
+    const v = rkVal(r, m), num = m === 'comp' ? r.confirmed_completed : m === 'sev' ? r.severe : v, den = m === 'comp' ? r.n : m === 'sev' ? r.severe_known : 1;
+    const share = m === 'mean' ? Math.max(0, v) : m === 'comp' ? v : Math.min(1, v * 4);
+    return {a, v, num, den, share}; }).filter(Boolean).sort((p, q) => low ? p.v - q.v : q.v - p.v);
+  const mt = [['comp', T('完成的题数', 'Cases completed')], ['mean', T('平均得分', 'Mean score')], ['sev', T('严重错误（越少越好）', 'Severe errors (fewer is better)')]];
+  const sc = RK_SCOPES.find(x => x[0] === BK.scope);
+  return `<article class="card metric rkbars"><div class="card-h"><span class="tile">∑</span><h3>${T('各方法排行', 'Ranking of the methods')} · ${esc(T(sc[1], sc[2]))}</h3></div>
+    <nav class="atoc s10nav rkm" style="margin:0 0 8px">${mt.map(([k, l]) => `<a class="${BK.metric === k ? 'on' : ''}" data-m="${k}">${l}</a>`).join('')}</nav>
+    <nav class="atoc s10nav rks" style="margin:0 0 10px">${RK_SCOPES.map(([k, zh, en]) => `<a class="${BK.scope === k ? 'on' : ''}" data-s="${k}">${T(zh, en)}</a>`).join('')}</nav>
+    <div class="rows">${rows.map((r, i) => `<div class="row ${r.a === 'method_R13' ? 'me' : ''}" style="--c:${ARMC[r.a] || '#888'}"><span class="share" style="width:${(r.share * 100).toFixed(1)}%"></span><span class="sw" style="background:${ARMC[r.a] || '#888'}"></span><span class="nm"><i class="rkn">${i + 1}</i> ${esc(armName(r.a))}</span>
+      <span class="val">${m === 'mean' ? `<b>${r.v.toFixed(3)}</b>` : `<b>${fmt(r.num)}</b> / ${fmt(r.den)}`}${m === 'comp' ? ` · ${(100 * r.v).toFixed(1)}%` : ''}</span></div>`).join('')}</div>
+    <div class="foot src">${esc(S.sources.rates)}${m === 'mean' ? ' · ' + T('平均得分 = 单题得分的平均（+1 完成，+0.3 没完成但安全地停下并报告，0 没完成，−1 严重错误）', 'mean score = average per-case score (+1 completed, +0.3 not completed but stopped safely and reported, 0 not completed, −1 severe error)') : ''}</div></article>`;
+}
 function mountRank(host) {
   if (!host) return;
-  const draw = () => { host.innerHTML = rankHTML(); host.querySelectorAll('.rkm a').forEach(a => a.onclick = () => { RK.metric = a.dataset.m; draw(); }); const c = host.querySelector('.rkchk'); if (c) c.onchange = () => { RK.all = c.checked; draw(); }; };
+  const draw = () => { host.innerHTML = barsHTML() + `<details class="rkdet" style="margin-top:12px"><summary>${T('各测试集的名次表', 'Rank table per test set')}</summary>${rankHTML()}</details>`;
+    host.querySelectorAll('.rkbars .rkm a').forEach(a => a.onclick = () => { BK.metric = a.dataset.m; RK.metric = a.dataset.m; draw(); host.querySelector('.rkdet').open = host.dataset.open === '1'; });
+    host.querySelectorAll('.rks a').forEach(a => a.onclick = () => { BK.scope = a.dataset.s; draw(); });
+    host.querySelectorAll('.rkdet .rkm a').forEach(a => a.onclick = () => { RK.metric = a.dataset.m; BK.metric = a.dataset.m; host.dataset.open = '1'; draw(); host.querySelector('.rkdet').open = true; });
+    const c = host.querySelector('.rkchk'); if (c) c.onchange = () => { RK.all = c.checked; host.dataset.open = '1'; draw(); host.querySelector('.rkdet').open = true; }; };
   draw();
 }
 function dataHTML() {
@@ -271,7 +291,7 @@ function dataHTML() {
   return `<section class="s10data" id="s11data"><div class="eyebrow" style="margin-top:34px"><span class="dot"></span>${T('主方法 R13 的测试结果', 'Results of the main method R13')} · B ${esc(S.b.slice(0, 11))}</div>
     <p class="lede" style="margin:6px 0 12px">${T('R13 是本项目提出的方法。它在“照指令字面走”和“进某个门”之间选一个；路被箱子挡住时会换道绕过去，绕不过去才停下报告。下面是它在各测试集上和字面优先、最近的门、v16 的对照。全部是仿真，指令由程序生成。', 'R13 is the method proposed in this project. It chooses between following the words of the instruction and entering an opening; when a box blocks the way it changes lane around it, and only when it cannot get around does it stop and report. Below it is compared with literal-first, nearest opening and v16 on every test set. Everything is simulated, and commands are program-generated.')}</p>
     <p class="note" style="margin:0 0 10px">${T('几个数量的口径：测试题 13,130 道（绕障的“有箱子”“没箱子”各算一题）；题 × 8 个方法 = 105,040 个结果；其中 82,896 次是实际运行，其余 22,144 个是“没箱子”借用基础集同一场景的记录。“必须绕过箱子的 922 题”是一个箱子、两个箱子错开里指令要求越过箱子位置的题（492 + 430）；“3,087”是绕障类别里有箱子的题数（549 + 474 + 2,064）。本页的表比较 8 个方法，分析页比较其中的一部分。', 'What the counts mean: 13,130 test cases (the with-box and no-box versions of a detour case count separately); cases × 8 methods = 105,040 results, of which 82,896 are actual runs and the other 22,144 are no-box results that reuse the record of the same base-set scene. “The 922 cases that require a detour” are those in the one-box and two-staggered-box sets whose instruction requires passing the box position (492 + 430); “3,087” is the number of with-box cases in the detour category (549 + 474 + 2,064). The tables on this page compare 8 methods; the analysis page compares some of them.')}</p>
-    <h3 class="s10h3" style="margin-top:8px">${T('排行榜：各方法在每个测试集上的名次', 'Leaderboard: rank of every method on every test set')}</h3><div id="rankov" class="card" style="padding:14px 16px"></div>
+    <h3 class="s10h3" style="margin-top:8px">${T('排行榜：各方法在每个测试集上的名次', 'Leaderboard: rank of every method on every test set')}</h3><div id="rankov"></div>
     <div class="agrid s10grid"><article class="card s10hero"><div class="card-h"><h3>${T('完成的题数', 'Completed cases')}</h3><span class="more">${T('确认完成 / 登记题数', 'confirmed / registered')}</span></div>
       <div class="big2"><div><b>${fmt(P.confirmed_completed)}</b><span>${T('必须绕过箱子的 922 题：本方法 R13 完成', 'The 922 cases that require a detour: completed by R13')}</span></div><div><b>${fmt(PL.confirmed_completed)}</b><span>${T('同上，字面优先', 'same, literal-first')}</span></div>
       <div><b>${fmt(PN.confirmed_completed)}</b><span>${T('同上，最近的门', 'same, nearest opening')}</span></div><div><b>${fmt(PV16.confirmed_completed)}</b><span>${T('同上，v16（原有系统）', 'same, v16 (original system)')}</span></div></div>

@@ -768,3 +768,11 @@ table.dft td .u{display:block}
 .pk{border:1px solid var(--line2);background:var(--surface);color:var(--ink);padding:7px 14px;border-radius:999px;font-size:13.5px;cursor:pointer}
 .pk.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .ex{grid-template-columns:minmax(150px,auto) 1fr 44px}.ex em{white-space:nowrap}
+
+.rankhome{margin:18px 0 8px}
+.rkbar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.rkbar .atoc{margin:0}.rkall{font-size:12.5px;color:var(--ink2);display:flex;gap:6px;align-items:center}
+table.rkt th.all,table.rkt td.all{background:var(--fill)}
+table.rkt td.c b{display:block}
+.rk{display:inline-block;margin-top:2px;padding:0 7px;border-radius:999px;font:600 10.5px var(--mono);color:var(--ink3);background:var(--fill)}
+.rk.r1{background:var(--accent);color:#fff}.rk.r2{background:var(--sand7);color:var(--ink)}
+.rkt{min-width:760px}

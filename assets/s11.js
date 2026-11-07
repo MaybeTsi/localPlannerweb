@@ -230,6 +230,39 @@ function coverageHTML() {
     <tr><td class="nm"><b>${T('合计', 'Total')}</b></td><td class="c">${fmt(C.rows.reduce((a, r) => a + r.cases, 0))}</td><td class="c">${fmt(C.expected)}</td><td class="c"><b>${fmt(C.have)}</b></td><td class="c">${fmt(C.rows.reduce((a, r) => a + r.shared, 0))}</td><td class="c">${fmt(C.expected - C.have)}</td></tr>
     </tbody></table></div><p class="note">${T('“没箱子”的版本大多没有单独运行，用的是基础集里同一场景的记录（B 称“同源引用”），B 的登记是 105,040 个逻辑槽、82,896 次实际运行。', 'Most “no box” versions were not run separately; they use the record of the same scene in the base set (B calls this a same-source reference). B registers 105,040 logical slots and 82,896 actual runs.')}</p>`;
 }
+
+/* ---------- ranking board: methods ranked on every test set ---------- */
+const RK = {metric: 'mean', all: false};
+const RK_SCOPES = [['ALL_LOGICAL', '全部题', 'All cases'], ['S11_MAIN_SYNTH', '主集', 'Main set'], ['S11_CLUTTER', '小障碍', 'Small obstacles'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner'],
+  ['S11_REAL', '真实地图', 'Real maps'], ['S11_OBS_O1_BLOCK', '一个箱子', 'One box'], ['S11_OBS_O3_BLOCK', '两个箱子错开', 'Two staggered boxes'], ['S11_OBS_O4_BLOCK', '走廊堵死', 'Corridor blocked']];
+const RK_CORE = ['method_R13', 'literal_if_feasible', 'nearest', 'v16', 'method_v6'];
+const rkVal = (r, m) => !r ? null : m === 'mean' ? r.mean_utility : m === 'comp' ? r.confirmed_completed / r.n : r.severe / r.severe_known;
+const rkFmt = (v, m) => v == null ? '—' : m === 'mean' ? v.toFixed(3) : (100 * v).toFixed(1) + '%';
+function rankHTML(compact) {
+  const m = RK.metric, low = m === 'sev', arms = (RK.all ? ARMS : RK_CORE);
+  const rank = {};
+  for (const [sc] of RK_SCOPES) {
+    const vals = arms.map(a => [a, rkVal(rate(sc, a), m)]).filter(x => x[1] != null).sort((p, q) => low ? p[1] - q[1] : q[1] - p[1]);
+    const same = vals.length && vals.every(x => Math.abs(x[1] - vals[0][1]) < 1e-9);
+    vals.forEach(([a, v], i) => { rank[sc + a] = same ? 0 : 1 + vals.findIndex(x => Math.abs(x[1] - v) < 1e-9); });
+  }
+  const order = arms.slice().sort((p, q) => (rank['ALL_LOGICAL' + p] || 99) - (rank['ALL_LOGICAL' + q] || 99));
+  const mt = [['mean', T('平均得分', 'Mean score')], ['comp', T('完成率', 'Completion rate')], ['sev', T('严重错误率（越低越好）', 'Severe-error rate (lower is better)')]];
+  const scopes = compact ? RK_SCOPES.slice(0, 1).concat(RK_SCOPES.slice(1)) : RK_SCOPES;
+  return `<div class="rkbar"><nav class="atoc s10nav rkm">${mt.map(([k, l]) => `<a class="${RK.metric === k ? 'on' : ''}" data-m="${k}">${l}</a>`).join('')}</nav>
+    <label class="rkall"><input type="checkbox" class="rkchk" ${RK.all ? 'checked' : ''}> ${T('显示全部 8 个方法（含新执行器变体）', 'Show all 8 methods (including the new-executor variants)')}</label></div>
+    <div class="tbl"><table class="t s10t rkt"><thead><tr><th>${T('方法', 'Method')}</th>${scopes.map(([k, zh, en], i) => `<th class="${i === 0 ? 'all' : ''}">${T(zh, en)}</th>`).join('')}</tr></thead><tbody>
+    ${order.map(a => `<tr class="${a === 'method_R13' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[a] || 'var(--sand8)'}"></span>${esc(armName(a))}</td>
+      ${scopes.map(([sc], i) => { const r = rate(sc, a), v = rkVal(r, m), k = rank[sc + a]; return `<td class="c ${i === 0 ? 'all' : ''}"><b>${rkFmt(v, m)}</b><span class="rk r${k}">${k ? T('第 ' + k, '#' + k) : ''}</span></td>`; }).join('')}</tr>`).join('')}
+    </tbody></table></div>
+    <p class="note">${T('每一列是在这个测试集上给上面的方法按所选指标排名（并列同名次）。平均得分 = 单题得分（+1 完成，+0.3 没完成但安全地停下并报告，0 没完成，−1 严重错误）的平均，受 +0.3 权重影响，不是成功率；完成率 = 确认完成的题 ÷ 全部题；排名只是这几个指标上的名次，不是统计显著性。“全部题”含有箱子和没箱子两种版本。走廊堵死的题期望做法是停下报告，所以那一列的完成率不是目标。', 'Each column ranks the methods above on the chosen metric for that test set (ties share a rank). Mean score = average of the per-case score (+1 completed, +0.3 not completed but stopped safely and reported, 0 not completed, −1 severe error), affected by the +0.3 weight and not a success rate; completion rate = confirmed completed ÷ all cases; ranks are positions on these metrics, not statistical significance. “All cases” includes the with-box and no-box versions. In the corridor-blocked cases the expected behaviour is to stop and report, so completion is not the goal in that column.')}</p>
+    <div class="note src">${esc(S.sources.rates)}</div>`;
+}
+function mountRank(host) {
+  if (!host) return;
+  const draw = () => { host.innerHTML = rankHTML(); host.querySelectorAll('.rkm a').forEach(a => a.onclick = () => { RK.metric = a.dataset.m; draw(); }); const c = host.querySelector('.rkchk'); if (c) c.onchange = () => { RK.all = c.checked; draw(); }; };
+  draw();
+}
 function dataHTML() {
   const b = boardsHTML(), P = S.primary_arms.find(x => x.arm === 'method_R13'), PV = S.primary_arms.find(x => x.arm === 'method_v6'), PL = S.primary_arms.find(x => x.arm === 'literal_if_feasible'), PN = S.primary_arms.find(x => x.arm === 'nearest'), PV16 = S.primary_arms.find(x => x.arm === 'v16');
   const mr = rate('S11_MAIN_SYNTH', 'method_R13'), mv = rate('S11_MAIN_SYNTH', 'method_v6'), ml = rate('S11_MAIN_SYNTH', 'literal_if_feasible'), rr = rate('S11_REAL', 'method_R13'), rv = rate('S11_REAL', 'method_v6'), rl = rate('S11_REAL', 'literal_if_feasible');
@@ -237,6 +270,7 @@ function dataHTML() {
   return `<section class="s10data" id="s11data"><div class="eyebrow" style="margin-top:34px"><span class="dot"></span>${T('主方法 R13 的测试结果', 'Results of the main method R13')} · B ${esc(S.b.slice(0, 11))}</div>
     <p class="lede" style="margin:6px 0 12px">${T('R13 是本项目提出的方法的当前版本（内部第 13 轮）。它在“照指令字面走”和“进某个门”之间选一个；路被箱子挡住时会换道绕过去，绕不过去才停下报告。下面是它在各测试集上和另外七个方法的对照；测试集称 S11，B 是负责独立评分的一方。全部是仿真，指令由程序生成。', 'R13 is the current version (internal iteration 13) of the method proposed in this project. It chooses between following the words of the instruction and entering an opening; when a box blocks the way it changes lane around it, and only when it cannot get around does it stop and report. Below it is compared with seven other methods on every test set (called S11; B is the party that scores independently). Everything is simulated, and commands are program-generated.')}</p>
     <p class="note" style="margin:0 0 10px">${T('几个数量的口径：测试题 13,130 道（绕障的“有箱子”“没箱子”各算一题）；题 × 8 个方法 = 105,040 个结果；其中 82,896 次是实际运行，其余 22,144 个是“没箱子”借用基础集同一场景的记录。“必须绕过箱子的 922 题”是一个箱子、两个箱子错开里指令要求越过箱子位置的题（492 + 430）；“3,087”是绕障类别里有箱子的题数（549 + 474 + 2,064）。本页的表比较 8 个方法，分析页比较其中的一部分。', 'What the counts mean: 13,130 test cases (the with-box and no-box versions of a detour case count separately); cases × 8 methods = 105,040 results, of which 82,896 are actual runs and the other 22,144 are no-box results that reuse the record of the same base-set scene. “The 922 cases that require a detour” are those in the one-box and two-staggered-box sets whose instruction requires passing the box position (492 + 430); “3,087” is the number of with-box cases in the detour category (549 + 474 + 2,064). The tables on this page compare 8 methods; the analysis page compares some of them.')}</p>
+    <h3 class="s10h3" style="margin-top:8px">${T('排行榜：各方法在每个测试集上的名次', 'Leaderboard: rank of every method on every test set')}</h3><div id="rankov" class="card" style="padding:14px 16px"></div>
     <div class="agrid s10grid"><article class="card s10hero"><div class="card-h"><h3>${T('完成的题数', 'Completed cases')}</h3><span class="more">${T('确认完成 / 登记题数', 'confirmed / registered')}</span></div>
       <div class="big2"><div><b>${fmt(P.confirmed_completed)}</b><span>${T('必须绕过箱子的 922 题：本方法 R13 完成', 'The 922 cases that require a detour: completed by R13')}</span></div><div><b>${fmt(PL.confirmed_completed)}</b><span>${T('同上，字面优先', 'same, literal-first')}</span></div>
       <div><b>${fmt(PN.confirmed_completed)}</b><span>${T('同上，最近的门', 'same, nearest opening')}</span></div><div><b>${fmt(PV16.confirmed_completed)}</b><span>${T('同上，v16（原有系统）', 'same, v16 (original system)')}</span></div></div>
@@ -253,6 +287,7 @@ function dataHTML() {
     <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('轨迹覆盖', 'Trajectory coverage')}</h3>${coverageHTML()}</section>`;
 }
 function bindData(root) {
+  mountRank(root.querySelector('#rankov'));
   const nav = root.querySelector('#s11chips');
   const redo = () => { const host = root.querySelector('#s11data'); const tmp = document.createElement('div'); tmp.innerHTML = dataHTML(); const nw = tmp.querySelector('#s11data'); host.replaceWith(nw);
     const rest = [...root.querySelectorAll('.s10data')].filter(x => x.id !== 's11data'); };
@@ -262,6 +297,6 @@ function bindData(root) {
   const tm = root.querySelector('#tmbox'); const bindTm = () => tm && tm.querySelectorAll('#tmchips a').forEach(a => a.onclick = () => { tmScope = a.dataset.s; tm.innerHTML = timesHTML(); bindTm(); }); bindTm();
 }
 
-window.SLX.s11 = {load, loaded: id => !!loaded[id], setOfId, det, side, badge, behLabel, outcome, featured, dataHTML, bindData, SETDEF, sets: Object.keys(SETDEF), famOf, FAM};
+window.SLX.s11 = {mountRank, load, loaded: id => !!loaded[id], setOfId, det, side, badge, behLabel, outcome, featured, dataHTML, bindData, SETDEF, sets: Object.keys(SETDEF), famOf, FAM};
 if (window.SLX.rerender && !window.SLX._s11ready) { window.SLX._s11ready = 1; window.SLX.rerender(); }
 })();

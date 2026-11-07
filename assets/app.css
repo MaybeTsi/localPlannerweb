@@ -783,3 +783,10 @@ table.rkt td.c b{display:block}
 #homecats{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media (max-width:860px){#homecats{grid-template-columns:minmax(0,1fr)}}
 .rkbars .card-h{margin-bottom:10px}
+#homecats>*{min-width:0}#homecats .card{height:100%}
+.s11grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.s11grid .s10b .tbl{overflow-x:auto}
+.s11grid table.s10t{font-size:12px}.s11grid table.s10t td.nm{min-width:110px}
+@media (max-width:860px){.s11grid{grid-template-columns:minmax(0,1fr)}}
+.s11grid table.s10t th .u{display:none}.s11grid table.s10t th,.s11grid table.s10t td{padding-left:8px;padding-right:8px}
+.s11grid table.s10t th:last-child{white-space:normal;min-width:90px}

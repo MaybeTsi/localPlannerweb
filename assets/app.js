@@ -312,7 +312,7 @@ function rail(route) {
   <a class="ri ${route === 'overview' ? 'on' : ''}" href="#overview"><span class="ico">◔</span>${t('overview')}</a>
   <h6>${t('sets')}</h6>
   ${sets.map(s => `<button class="ri ${route === 'list' && state.set === s.id ? 'on' : ''}" data-set="${s.id}"><span class="ico">${s.ico}</span><span>${esc(s.label)}<span class="sub">${esc(s.sub)}</span></span><span class="n">${fmt(s.n)}</span></button>`).join('')}
-  <div class="foot">${esc(META.built_utc.slice(0, 10))}</div>`;
+  <div class="foot">${esc(((window.SL_S11 || META).built_utc || '').slice(0, 10))}</div>`;
   r.querySelectorAll('[data-set]').forEach(b => b.onclick = () => { state.set = b.dataset.set; store.set('set', state.set); state.sub = 'all'; state.kind = 'all'; state.shown = 48; if (!armsOf(state.set).includes(state.arm)) state.arm = 'method'; closeNav(); if (location.hash.replace('#', '') !== 'list') location.hash = 'list'; else render(); });
   r.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav));
 }
@@ -367,7 +367,7 @@ function render() { cleanup.forEach(f => f()); cleanup = []; const r = route(); 
     d.onwheel = ev => { if (Math.abs(ev.deltaX) > Math.abs(ev.deltaY) && Math.abs(ev.deltaX) > 6) { ev.preventDefault(); const now = Date.now(); if (now - (dockState.w || 0) < 400) return; dockState.w = now; dock(ev.deltaX < 0, true); } };
     d.classList.toggle('fold', dockState.mini); }
   { let n = $('#simnote'); if (!n) { n = document.createElement('p'); n.id = 'simnote'; n.className = 'simnote'; $('#page').before(n); } n.innerHTML = `${L === 'zh' ? '本页全部数据来自仿真；指令由程序生成，不是真人；没有实车实验。' : 'All data on this page come from simulation; commands are program-generated, not spoken by people; there is no physical-robot experiment.'} <a href="#glossary">${L === 'zh' ? '名词解释' : 'Glossary'}</a>`; }
-  if (NAV !== 'rail') $('#page').insertAdjacentHTML('beforeend', `<footer class="pfoot"><span>${esc(META.built_utc.slice(0, 10))}</span></footer>`); }
+  if (NAV !== 'rail') $('#page').insertAdjacentHTML('beforeend', `<footer class="pfoot"><span>${esc(((window.SL_S11 || META).built_utc || '').slice(0, 10))}</span></footer>`); }
 window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
 
 

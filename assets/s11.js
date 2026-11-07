@@ -307,7 +307,7 @@ function homeHTML() {
     const n = id === 'Y4' ? 922 : rows[0].den;
     return `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${id === 'Y4' ? T('必须绕过箱子的 922 题', 'the 922 cases that require a detour') : fmt(n) + T(' 题', ' cases')}</span></div>${rowsHTML(rows, 'comp')}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
   }).join('');
-  return `<div id="homerank"></div><h3 class="s10h3">${T('四类测试集，各自的完成情况', 'The four test sets: how many cases each method completed')}</h3><div class="agrid s10grid s11grid" id="homecats">${cats}</div>`;
+  return `<div class="agrid s10grid s11grid" id="homecats"><div id="homerank"></div>${cats}</div>`;
 }
 function mountHome(root) {
   mountBars(root.querySelector('#homerank'), RK_SCOPES.map(x => [x[0], x[1], x[2]]), T('所有方法的总排行', 'Overall ranking of the methods'));

@@ -13,7 +13,8 @@ const pct = (v, d = 1) => v == null ? '—' : (100 * v).toFixed(d) + '%';
 const pp = (v, d = 2) => v == null ? '—' : (v >= 0 ? '+' : '') + (100 * v).toFixed(d);
 const f3 = v => v == null ? '—' : v.toFixed(3);
 const armName = a => (X.armName ? X.armName(a) : a);
-const ARMS = S.arms;
+const DEV = !!X.dev;
+const ARMS = DEV ? S.arms : S.arms.filter(a => X.pubArms.includes(a));
 const rate = (scope, arm) => S.rates.find(r => r.scope === scope && r.arm === arm);
 const utilColor = u10 => u10 == null ? 'var(--sand7)' : u10 >= 10 ? '#12A594' : u10 >= 3 ? '#F5AE73' : u10 === 0 ? 'var(--sand7)' : '#E5484D';
 const utilText = u10 => u10 == null ? '?' : u10 >= 10 ? '+1' : u10 === 3 ? '+0.3' : u10 === 0 ? '0' : u10 <= -10 ? '−1' : (u10 / 10).toFixed(1);
@@ -71,7 +72,7 @@ function det(e) {
   const c = e._c;
   return Promise.all([c.t && c.ch ? loadTraj(c.ch) : {}, e.m.img ? X.raster(e.m.img) : null]).then(([chunk]) => {
     const ent = chunk[c.tk || e.id] || {}, tr = ent.tr || {}, t0 = ent.t0 || {}, arms = {};
-    for (const a in c.a) { const q = c.a[a]; if (!q) continue;
+    for (const a in c.a) { const q = c.a[a]; if (!q || (!DEV && !X.pubArms.includes(a))) continue;
       arms[a] = {i: q[1] == null ? null : q[1] >= 10, l: null, c: null, na: false, rs: q[0], fs: q[6] || '', t: q[7], t0: t0[a] != null ? t0[a] : null, tr: tr[a] || null, s11: q}; }
     return e._det = {answers: {}, cand: null, arms, _tr: 1};
   });
@@ -182,7 +183,7 @@ function funnelHTML() {
 let tmScope = 'ALL_LOGICAL';
 function timesHTML() {
   const scopes = [['ALL_LOGICAL', T('全部', 'All')], ['S11_MAIN_SYNTH', T('主集', 'Main set')], ['S11_REAL', T('真实地图', 'Real maps')], ['S11_CLUTTER', T('小障碍', 'Small obstacles')], ['S11_DIVERSITY_F1', T('大厅', 'Hall')], ['S11_DIVERSITY_F2', T('拐角', 'Corner')]];
-  const pairs = [['literal_if_feasible', T('R13 对 字面优先', 'R13 vs literal-first')], ['method_v6', T('R13 对 上一版 v6.11', 'R13 vs previous version v6.11')]];
+  const pairs = [['literal_if_feasible', T('R13 对 字面优先', 'R13 vs literal-first')]].concat(DEV ? [['method_v6', T('R13 对 上一版 v6.11', 'R13 vs previous version v6.11')]] : []);
   const rows = [];
   for (const [r, lab] of pairs) for (const cls of ['literal', 'structure']) { const t = S.times.find(x => x.scope === tmScope && x.left === 'method_R13' && x.right === r && x.time_class === cls); if (t) rows.push([lab, cls, t]); }
   const s = v => v == null ? '—' : v.toFixed(2);
@@ -235,7 +236,7 @@ function coverageHTML() {
 const RK = {metric: 'mean', all: false};
 const RK_SCOPES = [['ALL_LOGICAL', '全部题', 'All cases'], ['S11_MAIN_SYNTH', '主集', 'Main set'], ['S11_CLUTTER', '小障碍', 'Small obstacles'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner'],
   ['S11_REAL', '真实地图', 'Real maps'], ['S11_OBS_O1_BLOCK', '一个箱子', 'One box'], ['S11_OBS_O3_BLOCK', '两个箱子错开', 'Two staggered boxes'], ['S11_OBS_O4_BLOCK', '走廊堵死', 'Corridor blocked']];
-const RK_CORE = ['method_R13', 'literal_if_feasible', 'nearest', 'v16', 'method_v6'];
+const RK_CORE = ['method_R13', 'literal_if_feasible', 'nearest', 'v16'].concat(DEV ? ['method_v6'] : []);
 const rkVal = (r, m) => !r ? null : m === 'mean' ? r.mean_utility : m === 'comp' ? r.confirmed_completed / r.n : r.severe / r.severe_known;
 const rkFmt = (v, m) => v == null ? '—' : m === 'mean' ? v.toFixed(3) : (100 * v).toFixed(1) + '%';
 function rankHTML(compact) {
@@ -250,7 +251,7 @@ function rankHTML(compact) {
   const mt = [['mean', T('平均得分', 'Mean score')], ['comp', T('完成率', 'Completion rate')], ['sev', T('严重错误率（越低越好）', 'Severe-error rate (lower is better)')]];
   const scopes = compact ? RK_SCOPES.slice(0, 1).concat(RK_SCOPES.slice(1)) : RK_SCOPES;
   return `<div class="rkbar"><nav class="atoc s10nav rkm">${mt.map(([k, l]) => `<a class="${RK.metric === k ? 'on' : ''}" data-m="${k}">${l}</a>`).join('')}</nav>
-    <label class="rkall"><input type="checkbox" class="rkchk" ${RK.all ? 'checked' : ''}> ${T('显示全部 8 个方法（含新执行器变体）', 'Show all 8 methods (including the new-executor variants)')}</label></div>
+    ${DEV ? `<label class="rkall"><input type="checkbox" class="rkchk" ${RK.all ? 'checked' : ''}> ${T('显示全部 8 个方法（含新执行器变体）', 'Show all 8 methods (including the new-executor variants)')}</label>` : ''}</div>
     <div class="tbl"><table class="t s10t rkt"><thead><tr><th>${T('方法', 'Method')}</th>${scopes.map(([k, zh, en], i) => `<th class="${i === 0 ? 'all' : ''}">${T(zh, en)}</th>`).join('')}</tr></thead><tbody>
     ${order.map(a => `<tr class="${a === 'method_R13' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[a] || 'var(--sand8)'}"></span>${esc(armName(a))}</td>
       ${scopes.map(([sc], i) => { const r = rate(sc, a), v = rkVal(r, m), k = rank[sc + a]; return `<td class="c ${i === 0 ? 'all' : ''}"><b>${rkFmt(v, m)}</b><span class="rk r${k}">${k ? T('第 ' + k, '#' + k) : ''}</span></td>`; }).join('')}</tr>`).join('')}
@@ -268,23 +269,23 @@ function dataHTML() {
   const mr = rate('S11_MAIN_SYNTH', 'method_R13'), mv = rate('S11_MAIN_SYNTH', 'method_v6'), ml = rate('S11_MAIN_SYNTH', 'literal_if_feasible'), rr = rate('S11_REAL', 'method_R13'), rv = rate('S11_REAL', 'method_v6'), rl = rate('S11_REAL', 'literal_if_feasible');
   const hero = (lab, a, b2, c, d) => `<div><b>${a}</b><span>${lab}</span></div>`;
   return `<section class="s10data" id="s11data"><div class="eyebrow" style="margin-top:34px"><span class="dot"></span>${T('主方法 R13 的测试结果', 'Results of the main method R13')} · B ${esc(S.b.slice(0, 11))}</div>
-    <p class="lede" style="margin:6px 0 12px">${T('R13 是本项目提出的方法的当前版本（内部第 13 轮）。它在“照指令字面走”和“进某个门”之间选一个；路被箱子挡住时会换道绕过去，绕不过去才停下报告。下面是它在各测试集上和另外七个方法的对照；测试集称 S11，B 是负责独立评分的一方。全部是仿真，指令由程序生成。', 'R13 is the current version (internal iteration 13) of the method proposed in this project. It chooses between following the words of the instruction and entering an opening; when a box blocks the way it changes lane around it, and only when it cannot get around does it stop and report. Below it is compared with seven other methods on every test set (called S11; B is the party that scores independently). Everything is simulated, and commands are program-generated.')}</p>
+    <p class="lede" style="margin:6px 0 12px">${T('R13 是本项目提出的方法。它在“照指令字面走”和“进某个门”之间选一个；路被箱子挡住时会换道绕过去，绕不过去才停下报告。下面是它在各测试集上和字面优先、最近的门、v16 的对照。全部是仿真，指令由程序生成。', 'R13 is the method proposed in this project. It chooses between following the words of the instruction and entering an opening; when a box blocks the way it changes lane around it, and only when it cannot get around does it stop and report. Below it is compared with literal-first, nearest opening and v16 on every test set. Everything is simulated, and commands are program-generated.')}</p>
     <p class="note" style="margin:0 0 10px">${T('几个数量的口径：测试题 13,130 道（绕障的“有箱子”“没箱子”各算一题）；题 × 8 个方法 = 105,040 个结果；其中 82,896 次是实际运行，其余 22,144 个是“没箱子”借用基础集同一场景的记录。“必须绕过箱子的 922 题”是一个箱子、两个箱子错开里指令要求越过箱子位置的题（492 + 430）；“3,087”是绕障类别里有箱子的题数（549 + 474 + 2,064）。本页的表比较 8 个方法，分析页比较其中的一部分。', 'What the counts mean: 13,130 test cases (the with-box and no-box versions of a detour case count separately); cases × 8 methods = 105,040 results, of which 82,896 are actual runs and the other 22,144 are no-box results that reuse the record of the same base-set scene. “The 922 cases that require a detour” are those in the one-box and two-staggered-box sets whose instruction requires passing the box position (492 + 430); “3,087” is the number of with-box cases in the detour category (549 + 474 + 2,064). The tables on this page compare 8 methods; the analysis page compares some of them.')}</p>
     <h3 class="s10h3" style="margin-top:8px">${T('排行榜：各方法在每个测试集上的名次', 'Leaderboard: rank of every method on every test set')}</h3><div id="rankov" class="card" style="padding:14px 16px"></div>
     <div class="agrid s10grid"><article class="card s10hero"><div class="card-h"><h3>${T('完成的题数', 'Completed cases')}</h3><span class="more">${T('确认完成 / 登记题数', 'confirmed / registered')}</span></div>
       <div class="big2"><div><b>${fmt(P.confirmed_completed)}</b><span>${T('必须绕过箱子的 922 题：本方法 R13 完成', 'The 922 cases that require a detour: completed by R13')}</span></div><div><b>${fmt(PL.confirmed_completed)}</b><span>${T('同上，字面优先', 'same, literal-first')}</span></div>
       <div><b>${fmt(PN.confirmed_completed)}</b><span>${T('同上，最近的门', 'same, nearest opening')}</span></div><div><b>${fmt(PV16.confirmed_completed)}</b><span>${T('同上，v16（原有系统）', 'same, v16 (original system)')}</span></div></div>
       <div class="big2" style="margin-top:12px"><div><b>${fmt(mr.confirmed_completed)}</b><span>${T('主集 3,000 题：R13 完成', 'Main set (3,000): R13 completed')}</span></div><div><b>${fmt(ml.confirmed_completed)}</b><span>${T('主集：字面优先', 'Main set: literal-first')}</span></div><div><b>${fmt(rr.confirmed_completed)}</b><span>${T('真实地图 2,556 题：R13 完成', 'Real maps (2,556): R13 completed')}</span></div><div><b>${fmt(rl.confirmed_completed)}</b><span>${T('真实地图：字面优先', 'Real maps: literal-first')}</span></div></div>
-      <p class="note" style="margin:8px 16px 0">${T('R13 的上一版 v6.11 不会绕障：必须绕障的题完成 ' + fmt(PV.confirmed_completed) + '，主集 ' + fmt(mv.confirmed_completed) + '，真实地图 ' + fmt(rv.confirmed_completed) + '。更多对照见下面各表。', 'R13’s previous version v6.11 cannot go around obstacles: ' + fmt(PV.confirmed_completed) + ' completions on the detour cases, ' + fmt(mv.confirmed_completed) + ' on the main set, ' + fmt(rv.confirmed_completed) + ' on the real maps. More comparisons are in the tables below.')}</p>
+      ${DEV ? `<p class="note" style="margin:8px 16px 0">${T('R13 的上一版 v6.11 不会绕障：必须绕障的题完成 ' + fmt(PV.confirmed_completed) + '，主集 ' + fmt(mv.confirmed_completed) + '，真实地图 ' + fmt(rv.confirmed_completed) + '。更多对照见下面各表。', 'R13’s previous version v6.11 cannot go around obstacles: ' + fmt(PV.confirmed_completed) + ' completions on the detour cases, ' + fmt(mv.confirmed_completed) + ' on the main set, ' + fmt(rv.confirmed_completed) + ' on the real maps. More comparisons are in the tables below.')}</p>` : ''}
       <div class="note src">${esc(S.sources.primary)} · ${esc(S.sources.rates)}</div></article></div>
     <h3 class="s10h3">${T('每个测试集的成绩', 'Scores per test set')}</h3>${b.chips}<div class="agrid s10grid s11grid" style="margin-top:14px">${b.boards}</div></section>
     <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('绕障逐步达成（漏斗）', 'Obstacle detour, step by step (funnel)')}</h3><p class="note" style="margin:0 0 6px">${T('到达箱子的位置 → 无接触地绕过 → 回到原路线 → 完成，八个方法。每一格是“满足的题数 / 判得出的题数”，后一步要先满足前一步。', 'Reached the box position → passed it without contact → back on the original path → completed, eight methods. Each cell is “satisfied / decided”, and each step needs the one before it.')}</p><div id="fnbox">${funnelHTML()}</div></section>
-    <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('作者自定的四项检查（登记检验）', 'Four author-defined checks (registered tests)')}</h3>${gatesTable()}</section>
-    <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('R13 的严重错误出在哪里', 'Where R13’s severe errors are')}</h3>${severeHTML()}</section>
+    ${DEV ? `<section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('作者自定的四项检查（登记检验）', 'Four author-defined checks (registered tests)')}</h3>${gatesTable()}</section>
+    <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('R13 的严重错误出在哪里', 'Where R13’s severe errors are')}</h3>${severeHTML()}</section>` : ''}
     <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('有箱子 − 没箱子（R13）', 'With box − no box (R13)')}</h3>${blockClearHTML()}</section>
     <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('同一题上的用时对比', 'Time on the same case')}</h3><div id="tmbox">${timesHTML()}</div></section>
     <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('各子集：R13 − 字面优先', 'Per subset: R13 − literal-first')}</h3>${diffHTML()}</section>
-    <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('轨迹覆盖', 'Trajectory coverage')}</h3>${coverageHTML()}</section>`;
+    ${DEV ? `<section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('轨迹覆盖', 'Trajectory coverage')}</h3>${coverageHTML()}</section>` : ''}`;
 }
 function bindData(root) {
   mountRank(root.querySelector('#rankov'));

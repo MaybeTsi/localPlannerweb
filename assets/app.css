@@ -790,3 +790,5 @@ table.rkt td.c b{display:block}
 @media (max-width:860px){.s11grid{grid-template-columns:minmax(0,1fr)}}
 .s11grid table.s10t th .u{display:none}.s11grid table.s10t th,.s11grid table.s10t td{padding-left:8px;padding-right:8px}
 .s11grid table.s10t th:last-child{white-space:normal;min-width:90px}
+.rrnote{color:var(--ink);background:var(--or2);border-radius:8px;padding:8px 12px;margin:8px 0 0}
+table.rrt td.c b{display:block}

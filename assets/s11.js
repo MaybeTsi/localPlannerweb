@@ -235,7 +235,7 @@ function coverageHTML() {
 
 /* ---------- ranking board: methods ranked on every test set ---------- */
 const RK = {metric: 'mean', all: false};
-const RK_SCOPES = [['ALL_LOGICAL', '全部题', 'All cases'], ['S11_MAIN_SYNTH', '主集', 'Main set'], ['S11_CLUTTER', '小障碍', 'Small obstacles'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner'],
+const RK_SCOPES = [['S11_MAIN_SYNTH', '主集', 'Main set'], ['S11_CLUTTER', '小障碍', 'Small obstacles'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner'],
   ['S11_REAL', '真实地图', 'Real maps'], ['S11_OBS_O1_BLOCK', '一个箱子', 'One box'], ['S11_OBS_O3_BLOCK', '两个箱子错开', 'Two staggered boxes'], ['S11_OBS_O4_BLOCK', '走廊堵死', 'Corridor blocked']];
 const RK_CORE = ['method_R13', 'literal_if_feasible', 'nearest', 'v16'].concat(DEV ? ['method_v6'] : []);
 const rkVal = (r, m) => !r ? null : m === 'mean' ? r.mean_utility : m === 'comp' ? r.confirmed_completed / r.n : r.severe / r.severe_known;
@@ -248,43 +248,70 @@ function rankHTML(compact) {
     const same = vals.length && vals.every(x => Math.abs(x[1] - vals[0][1]) < 1e-9);
     vals.forEach(([a, v], i) => { rank[sc + a] = same ? 0 : 1 + vals.findIndex(x => Math.abs(x[1] - v) < 1e-9); });
   }
-  const order = arms.slice().sort((p, q) => (rank['ALL_LOGICAL' + p] || 99) - (rank['ALL_LOGICAL' + q] || 99));
+  const order = arms.slice().sort((p, q) => (rank['S11_MAIN_SYNTH' + p] || 99) - (rank['S11_MAIN_SYNTH' + q] || 99));
   const mt = [['mean', T('平均得分', 'Mean score')], ['comp', T('完成率', 'Completion rate')], ['sev', T('严重错误率（越低越好）', 'Severe-error rate (lower is better)')]];
   const scopes = compact ? RK_SCOPES.slice(0, 1).concat(RK_SCOPES.slice(1)) : RK_SCOPES;
   return `<div class="rkbar"><nav class="atoc s10nav rkm">${mt.map(([k, l]) => `<a class="${RK.metric === k ? 'on' : ''}" data-m="${k}">${l}</a>`).join('')}</nav>
     ${DEV ? `<label class="rkall"><input type="checkbox" class="rkchk" ${RK.all ? 'checked' : ''}> ${T('显示全部 8 个方法（含新执行器变体）', 'Show all 8 methods (including the new-executor variants)')}</label>` : ''}</div>
-    <div class="tbl"><table class="t s10t rkt"><thead><tr><th>${T('方法', 'Method')}</th>${scopes.map(([k, zh, en], i) => `<th class="${i === 0 ? 'all' : ''}">${T(zh, en)}</th>`).join('')}</tr></thead><tbody>
+    <div class="tbl"><table class="t s10t rkt"><thead><tr><th>${T('方法', 'Method')}</th>${scopes.map(([k, zh, en], i) => `<th class="">${T(zh, en)}</th>`).join('')}</tr></thead><tbody>
     ${order.map(a => `<tr class="${a === 'method_R13' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[a] || 'var(--sand8)'}"></span>${esc(armName(a))}</td>
-      ${scopes.map(([sc], i) => { const r = rate(sc, a), v = rkVal(r, m), k = rank[sc + a]; return `<td class="c ${i === 0 ? 'all' : ''}"><b>${rkFmt(v, m)}</b><span class="rk r${k}">${k ? T('第 ' + k, '#' + k) : ''}</span></td>`; }).join('')}</tr>`).join('')}
+      ${scopes.map(([sc], i) => { const r = rate(sc, a), v = rkVal(r, m), k = rank[sc + a]; return `<td class="c "><b>${rkFmt(v, m)}</b><span class="rk r${k}">${k ? T('第 ' + k, '#' + k) : ''}</span></td>`; }).join('')}</tr>`).join('')}
     </tbody></table></div>
     <p class="note">${T('每一列是在这个测试集上给上面的方法按所选指标排名（并列同名次）。平均得分 = 单题得分（+1 完成，+0.3 没完成但安全地停下并报告，0 没完成，−1 严重错误）的平均，受 +0.3 权重影响，不是成功率；完成率 = 确认完成的题 ÷ 全部题；排名只是这几个指标上的名次，不是统计显著性。“全部题”含有箱子和没箱子两种版本。走廊堵死的题期望做法是停下报告，所以那一列的完成率不是目标。', 'Each column ranks the methods above on the chosen metric for that test set (ties share a rank). Mean score = average of the per-case score (+1 completed, +0.3 not completed but stopped safely and reported, 0 not completed, −1 severe error), affected by the +0.3 weight and not a success rate; completion rate = confirmed completed ÷ all cases; ranks are positions on these metrics, not statistical significance. “All cases” includes the with-box and no-box versions. In the corridor-blocked cases the expected behaviour is to stop and report, so completion is not the goal in that column.')}</p>
     <div class="note src">${esc(SRC(S.sources.rates))}</div>`;
 }
-const BK = {scope: 'ALL_LOGICAL', metric: 'comp'};
-const METRICS = () => [['comp', T('完成指令（意图成功）的题数', 'Cases completed (intent succeeded)')], ['mean', T('平均得分', 'Mean score')], ['sev', T('严重错误（越少越好）', 'Severe errors (fewer is better)')]];
+const BAR_SCOPES = [['S11_MAIN_SYNTH', '主集', 'Main set'], ['S11_CLUTTER', '小障碍', 'Small obstacles'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner'], ['S11_REAL', '真实地图', 'Real maps'],
+  ['S11_REAL/hospital', '医院', 'Hospital'], ['S11_REAL/office', '办公室', 'Office'], ['S11_OBS_O1_BLOCK', '一个箱子', 'One box'], ['S11_OBS_O3_BLOCK', '两个箱子错开', 'Two staggered boxes'], ['S11_OBS_O4_BLOCK', '走廊堵死', 'Corridor blocked'],
+  ['MIXED', '全部题（混合了不同子集）', 'All cases (mixes different subsets)']];
+const BK = {scope: 'S11_MAIN_SYNTH', metric: 'right'};
+/* right-rate numbers (data/s11/rightrate.js): [done_completable, n_completable, stopped_should_stop, n_should_stop, reported_although_completable, ...] */
+const RR = window.SL_RR || null;
+const rrGet = (scopes, a) => { const t = [0, 0, 0, 0, 0]; for (const sc of [].concat(scopes)) { const v = RR && RR.rows[sc] && RR.rows[sc][a]; if (v) for (let i = 0; i < 5; i++) t[i] += v[i]; } return t; };
+const rrCount = scopes => { const t = [0, 0]; for (const sc of [].concat(scopes)) { const v = RR && RR.counts[sc]; if (v) { t[0] += v[0]; t[1] += v[1]; } } return t; };
+const rrNum = (t, m) => m === 'right' ? [t[0] + t[2], t[1] + t[3]] : m === 'comp' ? [t[0], t[1]] : [t[2], t[3]];
+const METRICS = () => [['right', T('总做对率', 'Overall right rate')], ['comp', T('可完成题的完成率', 'Completion on completable cases')], ['stop', T('该停的题的正确停下率', 'Correct stops on should-stop cases')], ['mean', T('平均得分', 'Mean score')], ['sev', T('严重错误（越少越好）', 'Severe errors (fewer is better)')]];
 function barRows(scope, m, arms) {
   const low = m === 'sev';
-  return arms.map(a => { const r = rate(scope, a); if (!r) return null;
-    const v = rkVal(r, m), num = m === 'comp' ? r.confirmed_completed : m === 'sev' ? r.severe : v, den = m === 'comp' ? r.n : m === 'sev' ? r.severe_known : 1;
-    const share = m === 'mean' ? Math.max(0, v) : m === 'comp' ? v : Math.min(1, v * 4);
+  return arms.map(a => {
+    if (m === 'right' || m === 'comp' || m === 'stop') { const [n, d] = rrNum(rrGet(scope, a), m); return d ? {a, v: n / d, num: n, den: d, share: n / d} : null; }
+    const r = rate(Array.isArray(scope) ? scope[0] : scope, a); if (!r) return null;
+    const v = rkVal(r, m), num = m === 'sev' ? r.severe : v, den = m === 'sev' ? r.severe_known : 1;
+    const share = m === 'mean' ? Math.max(0, v) : Math.min(1, v * 4);
     return {a, v, num, den, share}; }).filter(Boolean).sort((p, q) => low ? p.v - q.v : q.v - p.v);
 }
 function rowsHTML(rows, m) {
   return `<div class="rows">${rows.map((r, i) => `<div class="row ${r.a === 'method_R13' ? 'me' : ''}" style="--c:${ARMC[r.a] || '#888'}"><span class="share" style="width:${(r.share * 100).toFixed(1)}%"></span><span class="sw" style="background:${ARMC[r.a] || '#888'}"></span><span class="nm"><i class="rkn">${i + 1}</i> ${esc(armName(r.a))}</span>
-      <span class="val">${m === 'mean' ? `<b>${r.v.toFixed(3)}</b>` : `<b>${fmt(r.num)}</b> / ${fmt(r.den)}`}${m === 'comp' ? ` · ${(100 * r.v).toFixed(1)}%` : ''}</span></div>`).join('')}</div>`;
+      <span class="val">${m === 'mean' ? `<b>${r.v.toFixed(3)}</b>` : `<b>${fmt(r.num)}</b> / ${fmt(r.den)}`}${m === 'right' || m === 'comp' || m === 'stop' ? ` · ${(100 * r.v).toFixed(1)}%` : ''}</span></div>`).join('')}</div>`;
 }
 const MEANNOTE = () => T('平均得分 = 每道题得分的平均（+1 完成指令，+0.3 没完成但安全地停下并报告，0 没完成，−1 严重错误）', 'mean score = average of the per-case score (+1 completed, +0.3 not completed but stopped safely and reported, 0 not completed, −1 severe error)');
+const MEXP = () => ({
+  right: T('总做对率 = （可完成的题里完成了指令的 + 该停的题里正确停下的）÷ 这个测试集里判得出结局的题。', 'Overall right rate = (completable cases completed + should-stop cases correctly stopped) ÷ cases of this test set whose outcome could be decided.'),
+  comp: T('可完成题的完成率 = 指令有可达成目标的题里，完成了指令的比例。', 'Completion on completable cases = the share of cases with a reachable target in which the instruction was completed.'),
+  stop: T('该停的题的正确停下率 = 指令指的门不存在、或走廊被堵死的题里，安全地停下并报告的比例（停下报告就算对）。', 'Correct stops on should-stop cases = the share of cases where the opening named does not exist or the corridor is blocked in which the method stopped safely and reported (a report counts as correct).'),
+  mean: MEANNOTE(), sev: T('严重错误 = 进错门或与障碍接触；数字是出现次数，越少越好。', 'Severe error = entering the wrong opening or touching an obstacle; the number is a count, fewer is better.')});
+function threeTable(scope) {
+  return `<div class="tbl" style="margin-top:12px"><table class="t s10t rrt"><thead><tr><th>${T('方法', 'Method')}</th><th>${T('总做对率', 'Overall right rate')}</th><th>${T('可完成题的完成率', 'Completion on completable')}</th><th>${T('该停的题的正确停下率', 'Correct stops')}</th></tr></thead><tbody>
+    ${RK_CORE.map(a => { const t = rrGet(scope, a), cell = m => { const [n, d] = rrNum(t, m); return d ? `<b>${(100 * n / d).toFixed(1)}%</b><span class="u">${fmt(n)} / ${fmt(d)}</span>` : '—'; };
+      return `<tr class="${a === 'method_R13' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[a] || 'var(--sand8)'}"></span>${esc(armName(a))}</td><td class="c">${cell('right')}</td><td class="c">${cell('comp')}</td><td class="c">${cell('stop')}</td></tr>`; }).join('')}
+    </tbody></table></div>`;
+}
 function barsCard(st, scopes, title) {
   const m = st.metric, sc = scopes.find(x => x[0] === st.scope) || scopes[0];
+  const cnt = rrCount(sc[0]);
+  const real = /^S11_REAL/.test(sc[0]); const r13 = rrGet(sc[0], 'method_R13');
+  const realNote = real && r13[1] ? `<p class="note rrnote">${T('真实地图：所有方法的总做对率都不高；本方法的主要问题是——指令有可达成的门，却停下报告而没有进门：可完成的 ' + fmt(r13[1]) + ' 题里有 ' + fmt(r13[4]) + ' 题（' + (100 * r13[4] / r13[1]).toFixed(1) + '%）是这样。', 'Real maps: every method has a low overall right rate; our method’s main problem is that it stops and reports although a reachable opening exists: this happens in ' + fmt(r13[4]) + ' of the ' + fmt(r13[1]) + ' completable cases (' + (100 * r13[4] / r13[1]).toFixed(1) + '%).')}</p>` : '';
   return `<article class="card metric rkbars"><div class="card-h"><span class="tile">∑</span><h3>${esc(title)}${scopes.length > 1 ? ' · ' + esc(T(sc[1], sc[2])) : ''}</h3></div>
     <nav class="atoc s10nav rkm" style="margin:0 0 8px">${METRICS().map(([k, l]) => `<a class="${m === k ? 'on' : ''}" data-m="${k}">${l}</a>`).join('')}</nav>
     ${scopes.length > 1 ? `<nav class="atoc s10nav rks" style="margin:0 0 10px">${scopes.map(([k, zh, en]) => `<a class="${st.scope === k ? 'on' : ''}" data-s="${k}">${T(zh, en)}</a>`).join('')}</nav>` : ''}
+    <p class="note" style="margin:0 0 6px">${esc(T('这个测试集', 'This test set') + ': ' + fmt(cnt[0] + cnt[1]) + T(' 题，其中可完成 ', ' cases, ') + (T('', '')) + fmt(cnt[0]) + T(' 题、该停 ', ' completable and ') + fmt(cnt[1]) + T(' 题。', ' should-stop.')) }${sc[0] === 'MIXED' ? ' ' + esc(T('“全部题”把不同子集混在一起，只作参考，不同子集的难度和该停的比例不同。', '“All cases” mixes different subsets, which differ in difficulty and in how many cases should stop; use it for reference only.')) : ''}</p>
     ${rowsHTML(barRows(sc[0], m, RK_CORE), m)}
-    <div class="foot src">${esc(SRC(S.sources.rates))}${m === 'mean' ? ' · ' + MEANNOTE() : ''}</div></article>`;
+    <p class="note" style="margin:8px 0 0">${esc(MEXP()[m])}</p>
+    ${threeTable(sc[0])}${realNote}
+    <div class="foot src">${T('按公开答案计算，待评测方的正式表。有箱子和没箱子是同一题的两个版本，绕障只算有箱子版本；结局判不出的题不计入分母。', 'Computed from the published answers, pending the evaluators’ formal table. With-box and no-box are two versions of the same case, so detour sets count the with-box version only; cases whose outcome could not be decided are left out of the denominators.')}${m === 'mean' || m === 'sev' ? ' · ' + esc(SRC(S.sources.rates)) : ''}</div></article>`;
 }
 function mountBars(host, scopes, title) {
   if (!host) return;
-  const st = host._st || (host._st = {scope: scopes[0][0], metric: 'comp'});
+  const st = host._st || (host._st = {scope: scopes[0][0], metric: 'right'});
   const draw = () => { host.innerHTML = barsCard(st, scopes, title); host.querySelectorAll('.rkm a').forEach(a => a.onclick = () => { st.metric = a.dataset.m; draw(); }); host.querySelectorAll('.rks a').forEach(a => a.onclick = () => { st.scope = a.dataset.s; draw(); }); };
   draw();
 }
@@ -297,31 +324,19 @@ function mountSetBars(host, setId) { mountBars(host, SET_SCOPES[setId], T('本�
 /* ---------- home (总览) ---------- */
 function homeHTML() {
   const cats = ['Y1', 'Y2', 'Y3', 'Y4'].map(id => {
-    let rows;
-    if (id === 'Y4') {
-      rows = RK_CORE.map(a => { const r = S.primary_arms.find(x => x.arm === a); return r ? {a, v: r.confirmed_completed / r.n, num: r.confirmed_completed, den: r.n, share: r.confirmed_completed / r.n} : null; }).filter(Boolean).sort((p, q) => q.v - p.v);
-    } else {
-      const sc = SET_SCOPES[id].filter(x => !/hospital|office/.test(x[0]));
-      rows = RK_CORE.map(a => { let c = 0, n = 0; for (const x of sc) { const r = rate(x[0], a); if (r) { c += r.confirmed_completed; n += r.n; } } return n ? {a, v: c / n, num: c, den: n, share: c / n} : null; }).filter(Boolean).sort((p, q) => q.v - p.v);
-    }
-    const n = id === 'Y4' ? 922 : rows[0].den;
-    return `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${id === 'Y4' ? T('必须绕过箱子的 922 题', 'the 922 cases that require a detour') : fmt(n) + T(' 题', ' cases')}</span></div>${rowsHTML(rows, 'comp')}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
+    const sc = SET_SCOPES[id].filter(x => !/hospital|office/.test(x[0])).map(x => x[0]);
+    const rows = barRows(sc, 'right', RK_CORE), cnt = rrCount(sc);
+    const r13 = rrGet(sc, 'method_R13');
+    return `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${fmt(cnt[0] + cnt[1])}${T(' 题', ' cases')}</span></div>
+      <p class="note" style="margin:0 16px 4px">${T('总做对率（可完成 ' + fmt(cnt[0]) + ' 题 + 该停 ' + fmt(cnt[1]) + ' 题）', 'Overall right rate (' + fmt(cnt[0]) + ' completable + ' + fmt(cnt[1]) + ' should-stop cases)')}</p>${rowsHTML(rows, 'right')}${id === 'Y2' && r13[1] ? `<p class="note rrnote" style="margin:8px 16px 0">${T('所有方法都不高；本方法的主要问题是有可达成的门却停下报告（' + fmt(r13[4]) + ' / ' + fmt(r13[1]) + ' 道可完成的题）。', 'All methods are low; our method’s main problem is stopping to report although an opening is reachable (' + fmt(r13[4]) + ' of ' + fmt(r13[1]) + ' completable cases).')}</p>` : ''}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
   }).join('');
   return `<div class="agrid s10grid s11grid" id="homecats"><div id="homerank"></div>${cats}</div>`;
 }
 function mountHome(root) {
-  mountBars(root.querySelector('#homerank'), RK_SCOPES.map(x => [x[0], x[1], x[2]]), T('所有方法的总排行', 'Overall ranking of the methods'));
+  mountBars(root.querySelector('#homerank'), BAR_SCOPES, T('各方法排行', 'Ranking of the methods'));
   root.querySelectorAll('[data-open]').forEach(a => a.onclick = ev => { ev.preventDefault(); X.openSet(a.dataset.open); });
 }
-function mountRank(host) {
-  if (!host) return;
-  const draw = () => { host.innerHTML = barsCard(BK, RK_SCOPES, T('各方法排行', 'Ranking of the methods')) + `<details class="rkdet" style="margin-top:12px"><summary>${T('各测试集的名次表', 'Rank table per test set')}</summary>${rankHTML()}</details>`;
-    host.querySelectorAll('.rkbars .rkm a').forEach(a => a.onclick = () => { BK.metric = a.dataset.m; RK.metric = a.dataset.m; draw(); host.querySelector('.rkdet').open = host.dataset.open === '1'; });
-    host.querySelectorAll('.rks a').forEach(a => a.onclick = () => { BK.scope = a.dataset.s; draw(); });
-    host.querySelectorAll('.rkdet .rkm a').forEach(a => a.onclick = () => { RK.metric = a.dataset.m; BK.metric = a.dataset.m; host.dataset.open = '1'; draw(); host.querySelector('.rkdet').open = true; });
-    const c = host.querySelector('.rkchk'); if (c) c.onchange = () => { RK.all = c.checked; host.dataset.open = '1'; draw(); host.querySelector('.rkdet').open = true; }; };
-  draw();
-}
+function mountRank(host) { mountBars(host, BAR_SCOPES, T('各方法排行', 'Ranking of the methods')); }
 function dataHTML() {
   const b = boardsHTML(), P = S.primary_arms.find(x => x.arm === 'method_R13'), PV = S.primary_arms.find(x => x.arm === 'method_v6'), PL = S.primary_arms.find(x => x.arm === 'literal_if_feasible'), PN = S.primary_arms.find(x => x.arm === 'nearest'), PV16 = S.primary_arms.find(x => x.arm === 'v16');
   const mr = rate('S11_MAIN_SYNTH', 'method_R13'), mv = rate('S11_MAIN_SYNTH', 'method_v6'), ml = rate('S11_MAIN_SYNTH', 'literal_if_feasible'), rr = rate('S11_REAL', 'method_R13'), rv = rate('S11_REAL', 'method_v6'), rl = rate('S11_REAL', 'literal_if_feasible');

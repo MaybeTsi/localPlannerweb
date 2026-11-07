@@ -30,7 +30,7 @@ bd = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(bd)
 
 D = 'research/s11_20261106'
-ARMS = ['method_R13', 'method_v6', 'literal_if_feasible', 'nearest', 'v16', 'literal_if_feasible_exec612', 'nearest_exec612', 'method_v6_exec612']
+ARMS = ['method_R13', 'literal_if_feasible', 'nearest', 'v16', 'method_v6', 'literal_if_feasible_exec612', 'nearest_exec612', 'method_v6_exec612']
 KEYS = {'S11_MAIN_SYNTH': 'main', 'S11_REAL': 'real', 'S11_CLUTTER': 'clutter', 'S11_DIVERSITY_F1': 'hall', 'S11_DIVERSITY_F2': 'corner',
         'S11_OBS_O1_BLOCK': 'o1b', 'S11_OBS_O1_CLEAR': 'o1c', 'S11_OBS_O3_BLOCK': 'o3b', 'S11_OBS_O3_CLEAR': 'o3c', 'S11_OBS_O4_BLOCK': 'o4b', 'S11_OBS_O4_CLEAR': 'o4c'}
 BEH = {'LITERAL_COMPLETED': 'L', 'STRUCTURE': 'S', 'STOP_REPORT': 'R', 'INCOMPLETE': 'I', 'COLLISION': 'C', 'UNKNOWN': '?', 'UNKNOWN_MULTIPLE_STRUCTURES': 'M'}

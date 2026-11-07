@@ -119,7 +119,7 @@ function dataHTML() {
     <div class="agrid s10grid" style="margin-top:14px">${!cur ? `<article class="card s10hero"><div class="card-h"><h3>${T('主集上的主比较', 'Primary comparison on the main set')}</h3></div>
       <div class="big2"><div><b>${f3(mainR.mean_geometry_equal_score)}</b><span>v6.11 ${T('平均得分', 'mean score')}</span></div><div><b>${f3(litR.mean_geometry_equal_score)}</b><span>${T('字面可行就照字面', 'literal if feasible')}</span></div>
       <div><b>${pct(mainR.intent_completion_all_generated)}</b><span>v6.11 ${T('完成率', 'completion')}</span></div><div><b>${pct(mainR.strict_rate_identifiable)}</b><span>v6.11 ${T('与参考一致', 'reference match')}</span></div></div>
-      <p class="note">${T('每题分数：完成真实意图 +1，安全报告 +0.3，没有完成 0，严重错误 −1。', 'Per-case score: true intent completed +1, safe report +0.3, not completed 0, severe error −1.')}</p>
+      <p class="note">${T('每题分数：完成真实意思 +1，安全报告 +0.3，没有完成 0，严重错误 −1。', 'Per-case score: intended meaning completed +1, safe report +0.3, not completed 0, severe error −1.')}</p>
       <div class="note src">${esc(S.sources.rates)}</div></article>` : ''}${boards}</div></section>`;
 }
 function bindData(root) {

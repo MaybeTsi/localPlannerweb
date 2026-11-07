@@ -120,12 +120,7 @@ let featCache = null;
 function featured() {
   if (featCache) return featCache;
   return featCache = load('Y4').then(() => {
-    const ok = [];
-    for (const e of X.IDX) {
-      if (!e.s11 || e.d !== 'Y4' || (e.g !== 'O1' && e.g !== 'O3')) continue;
-      const a = e._c.a, r = a.method_R13, v = a.method_v6;
-      if (r && v && r[1] != null && r[1] >= 10 && v[1] != null && v[1] < 10 && r[3] === 0 && v[3] === 0) ok.push(e);
-    }
+    const ok = X.IDX.filter(e => e.s11 && e.d === 'Y4' && (e.g === 'O1' || e.g === 'O3') && e._c.t);
     ok.sort((p, q) => p.id < q.id ? -1 : p.id > q.id ? 1 : 0);
     return ok.slice(0, 3);
   });
@@ -187,7 +182,7 @@ function funnelHTML() {
 let tmScope = 'ALL_LOGICAL';
 function timesHTML() {
   const scopes = [['ALL_LOGICAL', T('全部', 'All')], ['S11_MAIN_SYNTH', T('主集', 'Main set')], ['S11_REAL', T('真实地图', 'Real maps')], ['S11_CLUTTER', T('小障碍', 'Small obstacles')], ['S11_DIVERSITY_F1', T('大厅', 'Hall')], ['S11_DIVERSITY_F2', T('拐角', 'Corner')]];
-  const pairs = [['method_v6', T('R13 对 上一版 v6.11', 'R13 vs previous version v6.11')], ['literal_if_feasible', T('R13 对 字面优先', 'R13 vs literal-first')]];
+  const pairs = [['literal_if_feasible', T('R13 对 字面优先', 'R13 vs literal-first')], ['method_v6', T('R13 对 上一版 v6.11', 'R13 vs previous version v6.11')]];
   const rows = [];
   for (const [r, lab] of pairs) for (const cls of ['literal', 'structure']) { const t = S.times.find(x => x.scope === tmScope && x.left === 'method_R13' && x.right === r && x.time_class === cls); if (t) rows.push([lab, cls, t]); }
   const s = v => v == null ? '—' : v.toFixed(2);
@@ -236,16 +231,17 @@ function coverageHTML() {
     </tbody></table></div><p class="note">${T('“没箱子”的版本大多没有单独运行，用的是基础集里同一场景的记录（B 称“同源引用”），B 的登记是 105,040 个逻辑槽、82,896 次实际运行。', 'Most “no box” versions were not run separately; they use the record of the same scene in the base set (B calls this a same-source reference). B registers 105,040 logical slots and 82,896 actual runs.')}</p>`;
 }
 function dataHTML() {
-  const b = boardsHTML(), P = S.primary_arms.find(x => x.arm === 'method_R13'), PV = S.primary_arms.find(x => x.arm === 'method_v6'), PL = S.primary_arms.find(x => x.arm === 'literal_if_feasible'), PN = S.primary_arms.find(x => x.arm === 'nearest');
+  const b = boardsHTML(), P = S.primary_arms.find(x => x.arm === 'method_R13'), PV = S.primary_arms.find(x => x.arm === 'method_v6'), PL = S.primary_arms.find(x => x.arm === 'literal_if_feasible'), PN = S.primary_arms.find(x => x.arm === 'nearest'), PV16 = S.primary_arms.find(x => x.arm === 'v16');
   const mr = rate('S11_MAIN_SYNTH', 'method_R13'), mv = rate('S11_MAIN_SYNTH', 'method_v6'), ml = rate('S11_MAIN_SYNTH', 'literal_if_feasible'), rr = rate('S11_REAL', 'method_R13'), rv = rate('S11_REAL', 'method_v6'), rl = rate('S11_REAL', 'literal_if_feasible');
   const hero = (lab, a, b2, c, d) => `<div><b>${a}</b><span>${lab}</span></div>`;
   return `<section class="s10data" id="s11data"><div class="eyebrow" style="margin-top:34px"><span class="dot"></span>${T('主方法 R13 的测试结果', 'Results of the main method R13')} · B ${esc(S.b.slice(0, 11))}</div>
     <p class="lede" style="margin:6px 0 12px">${T('R13 是本项目提出的方法的当前版本（内部第 13 轮）。它在“照指令字面走”和“进某个门”之间选一个；路被箱子挡住时会换道绕过去，绕不过去才停下报告。下面是它在各测试集上和另外七个方法的对照；测试集称 S11，B 是负责独立评分的一方。全部是仿真，指令由程序生成。', 'R13 is the current version (internal iteration 13) of the method proposed in this project. It chooses between following the words of the instruction and entering an opening; when a box blocks the way it changes lane around it, and only when it cannot get around does it stop and report. Below it is compared with seven other methods on every test set (called S11; B is the party that scores independently). Everything is simulated, and commands are program-generated.')}</p>
     <p class="note" style="margin:0 0 10px">${T('几个数量的口径：测试题 13,130 道（绕障的“有箱子”“没箱子”各算一题）；题 × 8 个方法 = 105,040 个结果；其中 82,896 次是实际运行，其余 22,144 个是“没箱子”借用基础集同一场景的记录。“必须绕过箱子的 922 题”是一个箱子、两个箱子错开里指令要求越过箱子位置的题（492 + 430）；“3,087”是绕障类别里有箱子的题数（549 + 474 + 2,064）。本页的表比较 8 个方法，分析页比较其中的一部分。', 'What the counts mean: 13,130 test cases (the with-box and no-box versions of a detour case count separately); cases × 8 methods = 105,040 results, of which 82,896 are actual runs and the other 22,144 are no-box results that reuse the record of the same base-set scene. “The 922 cases that require a detour” are those in the one-box and two-staggered-box sets whose instruction requires passing the box position (492 + 430); “3,087” is the number of with-box cases in the detour category (549 + 474 + 2,064). The tables on this page compare 8 methods; the analysis page compares some of them.')}</p>
     <div class="agrid s10grid"><article class="card s10hero"><div class="card-h"><h3>${T('完成的题数', 'Completed cases')}</h3><span class="more">${T('确认完成 / 登记题数', 'confirmed / registered')}</span></div>
-      <div class="big2"><div><b>${fmt(P.confirmed_completed)}</b><span>${T('必须绕过箱子的 922 题，R13 完成数', 'R13 completions among the 922 cases that require a detour')}</span></div><div><b>${fmt(PV.confirmed_completed)}</b><span>${T('同上，上一版 v6.11（不会绕障，在这类题上为 0 是预期的）', 'same, previous version v6.11 (cannot go around obstacles; 0 is expected)')}</span></div>
-      <div><b>${fmt(PL.confirmed_completed)}</b><span>${T('同上，字面优先', 'same, literal-first')}</span></div><div><b>${fmt(PN.confirmed_completed)}</b><span>${T('同上，最近的门', 'same, nearest opening')}</span></div></div>
-      <div class="big2" style="margin-top:12px"><div><b>${fmt(mr.confirmed_completed)}</b><span>${T('主集 3,000 题，R13 完成', 'Main set (3,000): R13 completed')}</span></div><div><b>${fmt(mv.confirmed_completed)}</b><span>${T('主集，上一版 v6.11', 'Main set, previous version v6.11')}</span></div><div><b>${fmt(rr.confirmed_completed)}</b><span>${T('真实地图 2,556 题，R13 完成', 'Real maps (2,556): R13 completed')}</span></div><div><b>${fmt(rv.confirmed_completed)}</b><span>${T('真实地图，上一版 v6.11', 'Real maps, previous version v6.11')}</span></div></div>
+      <div class="big2"><div><b>${fmt(P.confirmed_completed)}</b><span>${T('必须绕过箱子的 922 题：本方法 R13 完成', 'The 922 cases that require a detour: completed by R13')}</span></div><div><b>${fmt(PL.confirmed_completed)}</b><span>${T('同上，字面优先', 'same, literal-first')}</span></div>
+      <div><b>${fmt(PN.confirmed_completed)}</b><span>${T('同上，最近的门', 'same, nearest opening')}</span></div><div><b>${fmt(PV16.confirmed_completed)}</b><span>${T('同上，v16（原有系统）', 'same, v16 (original system)')}</span></div></div>
+      <div class="big2" style="margin-top:12px"><div><b>${fmt(mr.confirmed_completed)}</b><span>${T('主集 3,000 题：R13 完成', 'Main set (3,000): R13 completed')}</span></div><div><b>${fmt(ml.confirmed_completed)}</b><span>${T('主集：字面优先', 'Main set: literal-first')}</span></div><div><b>${fmt(rr.confirmed_completed)}</b><span>${T('真实地图 2,556 题：R13 完成', 'Real maps (2,556): R13 completed')}</span></div><div><b>${fmt(rl.confirmed_completed)}</b><span>${T('真实地图：字面优先', 'Real maps: literal-first')}</span></div></div>
+      <p class="note" style="margin:8px 16px 0">${T('R13 的上一版 v6.11 不会绕障：必须绕障的题完成 ' + fmt(PV.confirmed_completed) + '，主集 ' + fmt(mv.confirmed_completed) + '，真实地图 ' + fmt(rv.confirmed_completed) + '。更多对照见下面各表。', 'R13’s previous version v6.11 cannot go around obstacles: ' + fmt(PV.confirmed_completed) + ' completions on the detour cases, ' + fmt(mv.confirmed_completed) + ' on the main set, ' + fmt(rv.confirmed_completed) + ' on the real maps. More comparisons are in the tables below.')}</p>
       <div class="note src">${esc(S.sources.primary)} · ${esc(S.sources.rates)}</div></article></div>
     <h3 class="s10h3">${T('每个测试集的成绩', 'Scores per test set')}</h3>${b.chips}<div class="agrid s10grid s11grid" style="margin-top:14px">${b.boards}</div></section>
     <section class="s10data" style="margin-top:34px"><h3 class="s10h3">${T('绕障逐步达成（漏斗）', 'Obstacle detour, step by step (funnel)')}</h3><p class="note" style="margin:0 0 6px">${T('到达箱子的位置 → 无接触地绕过 → 回到原路线 → 完成，八个方法。每一格是“满足的题数 / 判得出的题数”，后一步要先满足前一步。', 'Reached the box position → passed it without contact → back on the original path → completed, eight methods. Each cell is “satisfied / decided”, and each step needs the one before it.')}</p><div id="fnbox">${funnelHTML()}</div></section>

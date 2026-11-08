@@ -106,13 +106,14 @@ const state = {};
 function setAnswerOn(e, on, repaint) {
   const host = $('#anspanel'); if (!host) return;
   const btn = $('#tAns'); if (btn) btn.classList.toggle('on', on);
-  if (!on) { host.innerHTML = ''; e.m._over = null; if (e._pair) e._pair.m._over = null; repaint && repaint(); return; }
+  if (!on) { host.innerHTML = ''; if (e.m._overs) e.m._overs.ans = null; if (e._pair && e._pair.m._overs) e._pair.m._overs.ans = null; if (window.SLX.belief) window.SLX.belief.onAnswer(e, null); repaint && repaint(); return; }
   host.innerHTML = `<p class="note" style="padding:12px 16px">…</p>`;
   Promise.all([get(e.id), e._pair ? get(e._pair.id) : null]).then(([rec, rec2]) => {
     if (!$('#anspanel') || !(btn ? btn.classList.contains('on') : true)) return;
     host.innerHTML = panelHTML(e, rec, rec2);
-    if (rec) e.m._over = overlayFor(e, rec);
-    if (rec2) e._pair.m._over = overlayFor(e._pair, rec2);
+    if (rec) { e.m._overs = e.m._overs || {}; e.m._overs.ans = overlayFor(e, rec); }
+    if (rec2) { e._pair.m._overs = e._pair.m._overs || {}; e._pair.m._overs.ans = overlayFor(e._pair, rec2); }
+    if (window.SLX.belief) window.SLX.belief.onAnswer(e, rec);
     repaint && repaint();
     const gr = $('#guessres'); if (gr) revealGuess(e, rec);
   });

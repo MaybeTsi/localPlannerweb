@@ -804,3 +804,20 @@ table.rrt .u.unk{color:var(--ink3);font-size:10.5px;white-space:normal;max-width
 #homecats>.hcol{display:flex;flex-direction:column;gap:16px;min-width:0}
 #homecats>#homerank,#homecats>.homecat{grid-column:auto;grid-row:auto}
 @media (max-width:860px){#homecats{grid-template-columns:minmax(0,1fr)}}
+
+/* how the method thinks */
+.bgrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;padding:4px 16px 8px}
+.bcol h4{margin:0 0 6px;font-size:13px;font-weight:650;color:var(--ink)}
+.bb-list{display:flex;flex-direction:column;gap:5px}
+.bb{display:grid;grid-template-columns:12px minmax(64px,92px) 1fr 40px 44px;gap:8px;align-items:center;font-size:12.5px}
+.bb .sw{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.bb .nm{white-space:nowrap}
+.bb .bar{height:9px;border-radius:5px;background:var(--fill);overflow:hidden}.bb .bar i{display:block;height:100%;width:0;background:var(--c);border-radius:5px;transition:width .12s linear}
+.bb b{font:600 12px var(--mono);text-align:right}
+.bb .ex{font-size:11px;color:var(--ink3)}
+.bb.off{opacity:.55}.bb.off .bar i,.bb.off .sw{background:var(--sand7)}
+.bb.best .nm,.bb.best .v{font-weight:700}
+.bb .v{grid-column:3/5;font:600 12px var(--mono);text-align:right}
+.bb-list .bb:has(.v){grid-template-columns:12px minmax(64px,92px) 1fr 44px 80px}
+.bchart{width:100%;height:auto;margin-top:10px;display:block}
+@media (max-width:860px){.bgrid{grid-template-columns:minmax(0,1fr)}}

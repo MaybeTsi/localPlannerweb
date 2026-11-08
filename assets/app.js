@@ -228,7 +228,7 @@ function drawMap(cv, e, det, o) {
     if (last && (tm != null || !small) && !(small && o.alpha)) { car(g, X, Y, s, last, e, col); if (o.pen) { g.fillStyle = col; g.beginPath(); g.arc(X(last[1]), Y(last[2]), 3.2, 0, 7); g.fill(); } } }
   if (tm == null || small) { const st = e.m.s || [0, 0, 0]; car(g, X, Y, s, [0, st[0], st[1], st[2]], e, MAP.ink, .5); }
   if (ans && o.reticle != null && o.reticle >= 0 && !(ans.target && ans.target.kind === 'direction')) reticle(g, X, Y, e, ans, o.reticle, W, H);
-  if (!small && e.m._over) e.m._over(g, F);
+  if (!small && e.m._overs) for (const k in e.m._overs) if (e.m._overs[k]) e.m._overs[k](g, F);
   return F;
 }
 /* building doors carry long ids (office_y14_pos716_731): number them along the list instead, full id in the side panel */
@@ -409,6 +409,7 @@ function renderGlossary() {
    ['指令类型（① ② ③ …）', 'Instruction kinds (① ② ③ …)', '带圈数字是指令类型：① 按距离转弯，② 遇口转，③ 第 N 个口，④ 停在某处，⑤ 走到头，⑥ 转弯再前进，⑦ 窄道掉头，⑨ 现在转还是下一个，⑭ 纠正，⑮ 方向指令，⑯ 停在开口。编号不连续是因为有的类型没有用在这些测试集里。', 'Circled numbers are instruction kinds: ① turn at a distance, ② first opening, ③ N-th opening, ④ stop at, ⑤ corridor end, ⑥ turn then forward, ⑦ U-turn in a narrow lane, ⑨ turn now or at the next opening, ⑭ correction, ⑮ direction only, ⑯ stop at an opening. Numbers are not consecutive because some kinds are not used in these test sets.'],
    ['完成率 / 平均得分 / 区间', 'Completion / mean score / interval', '完成率 = 确认完成的题 ÷ 全部题；平均得分 = 单题得分的平均（只含判得出的题，受 0.3 权重影响，不是成功率）；区间是 95% 区间，由 B 对题（或对门）重采样得到。区间含 0 说明现有样本分不出差别，没有做显著性检验。', 'Completion = confirmed completed ÷ all cases; mean score = average per-case score (decided cases only, affected by the 0.3 weight, not a success rate); intervals are 95% intervals obtained by B resampling cases (or doors). An interval that contains 0 means the sample cannot tell the two apart; no significance test was run.'],
    ['分析页用到的缩写', 'Terms on the Analysis page', 'S1–S6 是更早各轮的测试集（见分析页各章标题）；oracle = 事先知道答案的参考，不是可用的方法，只用来对照上限；门等权 = 每扇门权重相同（先算每扇门的成功率再平均），所以不等于成功数 ÷ 总数；承诺 = 方法已选定要去哪扇门；消融 = 关掉方法的某个部件看结果变化；c = 指令模拟器里距离误差的比例；分析页是开发过程的详细记录，内部缩写较多，建议先看首页和概览。', 'S1–S6 are the test sets of earlier rounds (see the chapter titles on the Analysis page); oracle = a reference that knows the answer in advance, not a usable method, only an upper bound for comparison; door-equal = every door has the same weight (per-door rates are averaged), so it differs from successes ÷ total; commitment = the method has picked which door to go to; ablation = switching one part of the method off to see the change; c = the relative distance error in the command simulator; the Analysis page is a detailed development record with many internal abbreviations, so start with the home page and the Overview.'],
+   ['“方法怎么想”里的概率', 'The probabilities in “How the method thinks”', '本方法先验只看指令说法：纯距离指令“照字面”0.3，带“第 N 个 / 这个”的指令 0.05；每走一步，根据口述距离离哪扇门近、激光看到了什么来更新；到最后做决定时，比较“能执行的程度 × 期望得分”。这些不是固定数值：出题时各种意思的比例只有评分器知道。评分器里的完整 POMDP 知道整张地图和这些比例，但不知道这一题的答案。', 'The method’s prior only looks at how the instruction is worded: a pure distance instruction gets 0.3 for “follow the words”, one with “the N-th / this” gets 0.05; at every step the probabilities are updated by which opening is closest to the spoken distance and by what the laser sees; at the final decision it compares “how executable × expected score”. They are not fixed numbers: how often each kind of meaning occurs in the test set is known only to the scorer. The scorer’s full POMDP knows the whole map and these frequencies but not the answer to the case.'],
    ['仿真', 'Simulation', '全部结果来自仿真（CPU 闭环，部分为 Isaac 仿真），不是实车；指令由程序生成，回答也由程序模拟，不是真人。', 'All results come from simulation (CPU closed loop, some in Isaac simulation), not a physical robot; commands are program-generated and answers are simulated, not from people.'],
   ];
   const HIDE = /^(上一版|新执行器|登记检验|测试集 S10|试跑集|分析页用到的缩写)/;
@@ -652,6 +653,7 @@ function mountCase(e, det) {
       const bar = $('#sbar'); if (bar) bar.style.left = (sliderPct ?? 50) + '%'; }
     else { const cv = $('#cv'); if (cv) state._F = drawMap(cv, e, det, {arms: vis, t: tnow, cand: state.cand, answer: state.answer && e.ans, reticle: retK, pad: .25}); }
     const k = (tnow - t0) / (t1 - t0 || 1); $('#tfill').style.width = k * 100 + '%'; $('#knob').style.left = k * 100 + '%'; range.value = tnow;
+    if (e._bu) e._bu(tnow);
     $('#tc').textContent = (freeze ? '❚❚ ' : '') + `t ${tnow.toFixed(2)} s`; const tc = $('#tcode'); if (tc) tc.textContent = playing ? (freeze ? `❚❚ ${t('commit').toUpperCase()}` : '● LIVE') : '❚❚'; }
   /* speed-ramp-freeze · freeze-annotate: instant stop at commit, frame corners 8f, circle 10f, note rises, hold, ease-in thaw */
   function annotate(f) { const ann = $('#ann'); if (!ann) return; if (f == null) { ann.innerHTML = ''; return; } const k = ramp(f, 0, 8, EASE.snappy) * (1 - ramp(f, 40, 10, EASE.swift)); const top = det.cand && det.cand.list.slice().sort((p, q) => q[4] - p[4])[0]; const F = state._F;
@@ -690,6 +692,7 @@ function mountCase(e, det) {
   document.querySelectorAll('#side [data-pre]').forEach(b => b.onclick = () => { const on = presets.filter(p => p[1].every(a => det.arms[a]))[+b.dataset.pre][1]; ARMS.forEach(a => { state.on[a] = on.includes(a) ? 1 : 0; }); document.querySelectorAll('#side .armrow[data-a]').forEach(r => r.classList.toggle('off', !state.on[r.dataset.a])); if (state.view === 'overlay') paint(); else buildStage(); });
   document.querySelectorAll('#side .armrow[data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; state.on[a] = !state.on[a]; b.classList.toggle('off', !state.on[a]); if (state.view === 'overlay') paint(); else buildStage(); });
   if (e.s10 && window.SLX.ans) window.SLX.ans.mount(e, {paint});
+  if (e.s10 && window.SLX.belief) window.SLX.belief.mount(e, {paint, getT: () => tnow});
   buildStage(); const onR = () => buildStage(); window.addEventListener('resize', onR); cleanup.push(() => window.removeEventListener('resize', onR));
   if (state.answer && e.ans) { retK = 0; ret(); }
 }

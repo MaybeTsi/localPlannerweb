@@ -793,3 +793,14 @@ table.rkt td.c b{display:block}
 .rrnote{color:var(--ink);background:var(--or2);border-radius:8px;padding:8px 12px;margin:8px 0 0}
 table.rrt td.c b{display:block}
 table.rrt .u.unk{color:var(--ink3);font-size:10.5px;white-space:normal;max-width:210px}
+/* summary: ranking card on the left, the four test-set cards stacked on the right */
+#homecats{align-items:start;grid-auto-flow:row dense}
+#homecats>#homerank{grid-column:1;grid-row:1 / span 4}
+#homecats>.homecat{grid-column:2}
+#homecats .card{height:auto}
+@media (max-width:860px){#homecats>#homerank,#homecats>.homecat{grid-column:1;grid-row:auto}}
+
+#homecats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+#homecats>.hcol{display:flex;flex-direction:column;gap:16px;min-width:0}
+#homecats>#homerank,#homecats>.homecat{grid-column:auto;grid-row:auto}
+@media (max-width:860px){#homecats{grid-template-columns:minmax(0,1fr)}}

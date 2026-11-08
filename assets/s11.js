@@ -331,16 +331,17 @@ function mountSetBars(host, setId) { mountBars(host, SET_SCOPES[setId], T('本�
 function homeHTML() {
   const group = (sc, label) => { const rows = barRows(sc, 'right', RK_CORE), cnt = rrCount(sc);
     return `<p class="note" style="margin:0 16px 4px">${label ? esc(label) + ' · ' : ''}${T('总做对率（可完成 ' + fmt(cnt[0]) + ' 题 + 该停 ' + fmt(cnt[1]) + ' 题）', 'Overall right rate (' + fmt(cnt[0]) + ' completable + ' + fmt(cnt[1]) + ' should-stop cases)')}</p>${rowsHTML(rows, 'right')}`; };
-  const cats = ['Y1', 'Y2', 'Y3', 'Y4'].map(id => {
+  const catH = {};
+  ['Y1', 'Y2', 'Y3', 'Y4'].forEach(id => {
     const all = SET_SCOPES[id].filter(x => !/hospital|office/.test(x[0])).map(x => x[0]);
     const rp = id === 'Y2' && RR && RR.rep && RR.rep['S11_REAL'] && RR.rep['S11_REAL'].method_R13;
     let body;
     if (id === 'Y4') body = group(all.filter(x => /BLOCK/.test(x)), T('有箱子（三类合计）', 'With box (three kinds together)')) + `<div style="height:8px"></div>` + group(all.filter(x => /CLEAR/.test(x)), T('没箱子（三类合计）', 'No box (three kinds together)'));
     else body = group(all, '');
     const n = rrCount(all);
-    return `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${fmt(n[0] + n[1])}${T(' 题', ' cases')}${id === 'Y4' ? T('（有箱子、没箱子各算一份）', ' (with-box and no-box counted separately)') : ''}</span></div>${body}${rp ? `<p class="note rrnote" style="margin:8px 16px 0">${T('所有方法都不高；本方法的主要问题是有可达成的门却停下报告（' + fmt(rp[0]) + ' / ' + fmt(rp[1]) + ' 道可完成的题）。', 'All methods are low; our method’s main problem is stopping to report although an opening is reachable (' + fmt(rp[0]) + ' of ' + fmt(rp[1]) + ' completable cases).')}</p>` : ''}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
-  }).join('');
-  return `<div class="agrid s10grid s11grid" id="homecats"><div id="homerank"></div>${cats}</div><p class="note" style="margin-top:10px">${esc(RR_SRC())}${T('。分母只含结局已知的题；每个测试集页面里列出结局判不出的题数和全错 / 全对的范围。', '. Denominators contain only cases whose outcome is known; each test-set page lists the undecided cases and the range if all were wrong or all right.')}</p>`;
+    catH[id] = `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${fmt(n[0] + n[1])}${T(' 题', ' cases')}${id === 'Y4' ? T('（有箱子、没箱子各算一份）', ' (with-box and no-box counted separately)') : ''}</span></div>${body}${rp ? `<p class="note rrnote" style="margin:8px 16px 0">${T('所有方法都不高；本方法的主要问题是有可达成的门却停下报告（' + fmt(rp[0]) + ' / ' + fmt(rp[1]) + ' 道可完成的题）。', 'All methods are low; our method’s main problem is stopping to report although an opening is reachable (' + fmt(rp[0]) + ' of ' + fmt(rp[1]) + ' completable cases).')}</p>` : ''}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
+  });
+  return `<div class="agrid s10grid s11grid" id="homecats"><div class="hcol"><div id="homerank"></div>${catH.Y3}</div><div class="hcol">${catH.Y1}${catH.Y2}${catH.Y4}</div></div><p class="note" style="margin-top:10px">${esc(RR_SRC())}${T('。分母只含结局已知的题；每个测试集页面里列出结局判不出的题数和全错 / 全对的范围。', '. Denominators contain only cases whose outcome is known; each test-set page lists the undecided cases and the range if all were wrong or all right.')}</p>`;
 }
 function mountHome(root) {
   mountBars(root.querySelector('#homerank'), BAR_SCOPES, T('各方法排行', 'Ranking of the methods'));

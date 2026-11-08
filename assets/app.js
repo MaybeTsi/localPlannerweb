@@ -182,6 +182,39 @@ function anim(frames, step, done) { if (reduce) { step(frames); done && done(); 
 
 /* ---------------- map renderer ---------------- */
 let MAP, ARMC, CANDC;
+/* glass light/dark switch (own implementation, pixel sun / moon on a frosted thumb; click or drag) */
+const PIX = {
+  moon: ['..XXX....', '.XXX..X..', 'XXX......', 'XXX......', 'XXX......', 'XXXX.....', '.XXXXXXX.', '..XXXXX..'],
+  sun: ['....X....', '.X..X..X.', '..XXXXX..', '.XXXXXXX.', 'XXXXXXXXX', '.XXXXXXX.', '..XXXXX..', '.X..X..X.']
+};
+const pixSVG = k => `<svg class="pix ${k}" viewBox="0 0 9 8" width="18" height="16" aria-hidden="true">${PIX[k].map((r, y) => [...r].map((c, x) => c === 'X' ? `<rect x="${x}" y="${y}" width=".86" height=".86" rx=".12"/>` : '').join('')).join('')}</svg>`;
+function themeSwitch() {
+  const dark = THEME === 'dark', tt = dark ? t('toLight') : t('toDark');
+  return `<button class="tsw ${dark ? 'is-dark' : 'is-light'}" id="themebtn" role="switch" aria-checked="${dark}" aria-label="${tt}" title="${tt}"><span class="tsw-track"></span><span class="tsw-thumb">${pixSVG('moon')}${pixSVG('sun')}</span><canvas class="tsw-gl"></canvas></button>`;
+}
+let glPrev = null;
+function bindThemeSwitch() {
+  const b = $('#themebtn'), th = b.querySelector('.tsw-thumb'); let drag = null, p = THEME === 'dark' ? 0 : 1, tp = p, vel = 0, raf = 0, pending = null;
+  if (glPrev) { glPrev.dispose(); glPrev = null; }
+  let G = null; try { G = window.SLGlass && SLGlass.attach(b.querySelector('.tsw-gl'), 92, 56); } catch (_) { G = null; }
+  glPrev = G; if (G) b.classList.add('gl'); else b.querySelector('.tsw-gl').remove();
+  const draw = () => { if (G) G.set(p); };
+  const step = () => { raf = 0; if (drag && drag.moved) return; const k = 260, c = 22, dt = 1 / 60; vel += ((tp - p) * k - vel * c) * dt; p += vel * dt; p = Math.max(-.04, Math.min(1.04, p)); draw();
+    if (Math.abs(tp - p) > .002 || Math.abs(vel) > .01) raf = requestAnimationFrame(step); else { p = tp; draw(); if (pending) { const n = pending; pending = null; apply(n); } } };
+  const go = () => { if (!raf) raf = requestAnimationFrame(step); };
+  const apply = next => { THEME = next; store.set('theme', THEME); document.documentElement.dataset.theme = THEME; readTheme(); render(); };
+  const commit = next => { b.classList.remove('drag'); b.style.removeProperty('--p'); b.classList.toggle('is-dark', next === 'dark'); b.classList.toggle('is-light', next !== 'dark');
+    if (next === THEME) { tp = next === 'dark' ? 0 : 1; go(); return; }
+    tp = next === 'dark' ? 0 : 1;
+    if (G) { pending = next; go(); } else setTimeout(() => apply(next), 320); };
+  draw();
+  b.addEventListener('pointerdown', ev => { drag = {x: ev.clientX, p, moved: false, w: 28}; b.setPointerCapture(ev.pointerId); });
+  b.addEventListener('pointermove', ev => { if (!drag) return; const dx = ev.clientX - drag.x; if (Math.abs(dx) > 4) { drag.moved = true; b.classList.add('drag'); }
+    if (drag.moved) { drag.cur = Math.max(0, Math.min(1, drag.p + dx / drag.w)); p = drag.cur; vel = 0; b.style.setProperty('--p', p); draw(); } });
+  b.addEventListener('pointerup', () => { if (!drag) return; const d = drag; drag = null; commit(d.moved ? (d.cur > .5 ? 'light' : 'dark') : (THEME === 'dark' ? 'light' : 'dark')); });
+  b.addEventListener('pointercancel', () => { drag = null; b.classList.remove('drag'); b.style.removeProperty('--p'); tp = THEME === 'dark' ? 0 : 1; go(); });
+  b.addEventListener('keydown', ev => { if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); commit(THEME === 'dark' ? 'light' : 'dark'); } });
+}
 function readTheme() { const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
   MAP = {unk: v('--map-unk'), free: v('--map-free'), wall: v('--map-wall'), grid: v('--map-grid'), gate: v('--map-gate'), gateOff: v('--map-gate-off'), lit: v('--map-lit'), hud: v('--map-hud'), ink: v('--map-ink'), acc: v('--accent'),
     dFail: v('--dot-fail'), dUnk: v('--dot-unk'), dNa: v('--dot-na'), heroOk: v('--hero-ok'), heroNo: v('--hero-no'), heroOkDot: v('--accent'), heroNoDot: v('--hero-no-dot'), heroStart: v('--hero-start'), heroAxis: v('--hero-axis')};
@@ -326,9 +359,9 @@ function topbar(crumbs) {
    ${['rail', 'mini'].includes(NAV) ? `<nav class="crumb">${crumbs}</nav>` : ''}
    <a class="gl-link" href="#glossary">${L === 'zh' ? '名词解释' : 'Glossary'}</a>
    <label class="search"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#8E9097" stroke-width="1.6"><circle cx="7" cy="7" r="5"/><path d="m11 11 3.5 3.5"/></svg><input id="q" placeholder="${t('search')}" value="${esc(state.q)}" autocomplete="off"><kbd>⌘K</kbd></label>
-   <button class="themebtn" id="themebtn" aria-label="${THEME === 'dark' ? t('toLight') : t('toDark')}" title="${THEME === 'dark' ? t('toLight') : t('toDark')}">${THEME === 'dark' ? '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></svg>' : '<svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M13.5 9.5A5.5 5.5 0 1 1 6.5 2.5a4.5 4.5 0 0 0 7 7z"/></svg>'}<span>${THEME === 'dark' ? t('light') : t('dark')}</span></button>
+   ${themeSwitch()}
    ${seg('lang', [['zh', '中文'], ['en', 'EN']], L, 'sm')}`;
-  $('#themebtn').onclick = () => { THEME = THEME === 'dark' ? 'light' : 'dark'; store.set('theme', THEME); document.documentElement.dataset.theme = THEME; readTheme(); render(); };
+  bindThemeSwitch();
   $('#menu').onclick = () => $('#app').classList.toggle('nav');
   document.querySelectorAll('#stabs [data-set]').forEach(b => b.onclick = () => setSet(b.dataset.set));
   const ink = $('#sink'), on = $('#stabs button.on'); if (ink) { if (on) { ink.style.width = on.offsetWidth - 24 + 'px'; ink.style.transform = `translateX(${on.offsetLeft + 12}px)`; } else ink.style.opacity = 0; }

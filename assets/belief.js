@@ -33,13 +33,16 @@ const armLabel = a => ({method_R13: T('本方法', 'our method'), method_v6: T('
 
 /* ---------- doors: same letter and colour on the map and in every bar ---------- */
 function buildDoors(e, on, rf) {
-  const doors = [], byRef = {}, byOn = {};
-  if (rf && rf.c) for (const c of rf.c) { if (!(rf.p && rf.p[c[0]] > 0) && !c[5]) continue; const d = {ref: c[0], on: null, x: c[1], y: c[2], side: c[3], w: c[4]}; doors.push(d); byRef[c[0]] = d; }
+  /* one mapping candidate_k -> letter, numbered near to far from the start, built from the scorer's candidate catalogue;
+     the online hypotheses reach it through C's id_map (MATCHED only); online doors without a match are "unmatched" (no letter) */
+  const doors = [], byRef = {}, byOn = {}, s = e.m.s || [0, 0, 0];
+  const cat = ((rf && rf.c) || []).slice().sort((p, q) => Math.hypot(p[1] - s[0], p[2] - s[1]) - Math.hypot(q[1] - s[0], q[2] - s[1]));
+  cat.forEach((c, i) => { const d = {ref: c[0], on: null, x: c[1], y: c[2], side: c[3], w: c[4], n: String.fromCharCode(65 + i), c: DOOR[i % DOOR.length], name: T('门 ', 'Opening ') + String.fromCharCode(65 + i), show: !!((rf.p && rf.p[c[0]] > 0) || c[5])}; doors.push(d); byRef[c[0]] = d; });
+  let u = 0; const un = [];
   if (on) on.h.forEach((h, i) => { if (h[1] === 'literal' || h[1] === 'unseen') return; const k = on.m && on.m[String(i)]; let d = k && byRef[k];
-    if (!d) { d = {ref: null, on: i, x: h[2], y: h[3], side: h[4], w: 1.0}; doors.push(d); } else d.on = i; byOn[i] = d; });
-  const s = e.m.s || [0, 0, 0];
-  doors.filter(d => d.x != null).sort((p, q) => Math.hypot(p.x - s[0], p.y - s[1]) - Math.hypot(q.x - s[0], q.y - s[1])).forEach((d, i) => { d.n = String.fromCharCode(65 + i); d.c = DOOR[i % DOOR.length]; d.name = T('门 ', 'Opening ') + d.n; });
-  doors.forEach(d => { if (!d.name) { d.name = T('门 ?', 'Opening ?'); d.c = DOOR[7]; } });
+    if (d) { d.on = i; d.show = true; } else { d = {ref: null, on: i, x: h[2], y: h[3], side: h[4], w: 1.0, n: '?', c: DOOR[7], unmatched: true, show: true}; doors.push(d); un.push(d); }
+    byOn[i] = d; });
+  un.forEach((d, i) => { d.name = T('未对应', 'Unmatched') + (un.length > 1 ? ' ' + (i + 1) : ''); });
   return {doors, byRef, byOn};
 }
 
@@ -133,15 +136,15 @@ function mount(e, hooks) {
       document.querySelectorAll('#barms [data-arm]').forEach(a => a.onclick = () => { arm = a.dataset.arm; render(); });
       // doors on the map
       e.m._overs = e.m._overs || {};
-      e.m._overs.belief = (g, F) => { g.save(); DS.doors.forEach(d => { if (d.x == null) return; const c = d.c, dep = 1.6 * (d.side === 'left' || d.side === 1 ? 1 : -1), w = d.w || 1, x0 = F.X(d.x - w / 2), x1 = F.X(d.x + w / 2), y0 = F.Y(d.y), y1 = F.Y(d.y + dep);
+      e.m._overs.belief = (g, F) => { g.save(); DS.doors.forEach(d => { if (d.x == null || !d.show) return; const c = d.c, dep = 1.6 * (d.side === 'left' || d.side === 1 ? 1 : -1), w = d.w || 1, x0 = F.X(d.x - w / 2), x1 = F.X(d.x + w / 2), y0 = F.Y(d.y), y1 = F.Y(d.y + dep);
         g.fillStyle = c + '38'; g.strokeStyle = c; g.lineWidth = 2; g.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0)); g.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
-        g.fillStyle = c; g.font = '700 12px ui-monospace,Menlo,monospace'; g.fillText(d.n || '?', (x0 + x1) / 2 - 4, (y0 + y1) / 2 + 4); }); g.restore(); };
+        g.fillStyle = c; g.font = '700 12px ui-monospace,Menlo,monospace'; g.fillText(d.unmatched ? '?' : d.n, (x0 + x1) / 2 - 4, (y0 + y1) / 2 + 4); }); g.restore(); };
       hooks.paint();
       const right = `<div class="bcol" id="bref">${refHTML(e, rf, DS)}</div>`;
       if (isObstacle(e.id)) { body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法（边走边算）', 'Our method (updated while driving)')}</h4><p class="note">${T('绕障题的概率还没有导出（导出只含五个基础测试集）。', 'Probabilities of the detour cases are not exported (the export covers the five base test sets only).')}</p></div>${right}</div>`; e._bu = null; return; }
       if (!on) { body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法（边走边算）', 'Our method (updated while driving)')}</h4><p class="note">${T('这一题没有导出概率。', 'No probabilities were exported for this case.')}</p></div>${right}</div>`; e._bu = null; return; }
       if (!on.t.length) { body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法', 'Our method')}</h4><p class="note">${T('这类指令直接照字面执行，没有概率。', 'This kind of instruction is carried out literally, so there are no probabilities.')}</p></div>${right}</div>`; e._bu = null; return; }
-      const names = {}; on.h.forEach((h, i) => { names[i] = h[1] === 'literal' ? [T('照字面', 'Follow the words'), LITC] : h[1] === 'unseen' ? [T('还没看到的门', 'Not seen yet'), UNC] : (DS.byOn[i] ? [DS.byOn[i].name, DS.byOn[i].c] : [T('门 ?', 'Opening ?'), DOOR[7]]); });
+      const names = {}; on.h.forEach((h, i) => { names[i] = h[1] === 'literal' ? [T('照字面', 'Follow the words'), LITC] : h[1] === 'unseen' ? [T('还没看到的门', 'Not seen yet'), UNC] : (DS.byOn[i] ? [DS.byOn[i].name, DS.byOn[i].c] : [T('未对应', 'Unmatched'), DOOR[7]]); });
       const noScore = arm === 'method_v4';
       const unnorm = on.t.some(r => { const s = r[2].reduce((a, v) => a + (v || 0), 0); return Math.abs(s - 1) > 0.02; });
       body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法边走边算的', 'What the method computes while driving')}</h4><div class="bb-list" id="bbars"></div>

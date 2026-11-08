@@ -835,3 +835,19 @@ table.rrt .u.unk{color:var(--ink3);font-size:10.5px;white-space:normal;max-width
 .beliefcard .bcap{margin:6px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.45}
 .beliefcard .bwhy{margin:4px 16px 14px;padding:10px 14px;border-radius:10px;background:var(--or2);font-size:14px;line-height:1.55;color:var(--ink)}
 .beliefcard .bgrid{padding-bottom:4px}
+
+/* glass light/dark switch */
+.tsw{--p:0;position:relative;flex:none;width:62px;height:34px;padding:0;border:0;background:none;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent}
+.tsw.is-light{--p:1}
+.tsw-track{position:absolute;inset:0;border-radius:13px;background:linear-gradient(180deg,#0a0b10,#15171f);box-shadow:inset 0 2px 5px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.08);transition:background .35s,box-shadow .35s}
+.tsw.is-light .tsw-track{background:linear-gradient(180deg,#d9d7d2,#ecebe7);box-shadow:inset 0 2px 5px rgba(60,50,30,.25),0 0 0 1px rgba(0,0,0,.08)}
+.tsw-thumb{position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:10px;display:grid;place-items:center;overflow:hidden;transform:translateX(calc(var(--p) * 28px));transition:transform .32s cubic-bezier(.3,1.3,.5,1),box-shadow .35s,background .35s;
+  background:linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,.06) 55%,rgba(120,140,255,.55));backdrop-filter:blur(6px);box-shadow:inset 0 1px 1px rgba(255,255,255,.35),0 3px 8px rgba(0,0,0,.5),0 6px 12px -2px rgba(100,120,255,.55)}
+.tsw.drag .tsw-thumb{transition:none}
+.tsw.is-light .tsw-thumb{background:linear-gradient(180deg,rgba(255,190,70,.95),rgba(255,243,220,.95) 60%,#f6f2ea);box-shadow:inset 0 1px 1px rgba(255,255,255,.9),0 3px 8px rgba(120,90,40,.3),0 -4px 12px -1px rgba(255,170,30,.6)}
+.tsw .pix{position:absolute;transition:opacity .25s,transform .35s}
+.tsw .pix.moon{fill:#fff;opacity:1}.tsw .pix.sun{fill:#4a443a;opacity:0;transform:scale(.6) rotate(-60deg)}
+.tsw.is-light .pix.moon{opacity:0;transform:scale(.6) rotate(60deg)}.tsw.is-light .pix.sun{opacity:1;transform:none}
+.tsw:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:13px}
+.tsw .tsw-gl{position:absolute;left:-15px;top:-11px;pointer-events:none;display:none}
+.tsw.gl .tsw-gl{display:block}.tsw.gl .tsw-track,.tsw.gl .tsw-thumb{display:none}

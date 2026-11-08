@@ -261,19 +261,23 @@ function rankHTML(compact) {
     <div class="note src">${esc(SRC(S.sources.rates))}</div>`;
 }
 const BAR_SCOPES = [['S11_MAIN_SYNTH', '主集', 'Main set'], ['S11_CLUTTER', '小障碍', 'Small obstacles'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner'], ['S11_REAL', '真实地图', 'Real maps'],
-  ['S11_REAL/hospital', '医院', 'Hospital'], ['S11_REAL/office', '办公室', 'Office'], ['S11_OBS_O1_BLOCK', '一个箱子', 'One box'], ['S11_OBS_O3_BLOCK', '两个箱子错开', 'Two staggered boxes'], ['S11_OBS_O4_BLOCK', '走廊堵死', 'Corridor blocked'],
-  ['MIXED', '全部题（混合了不同子集）', 'All cases (mixes different subsets)']];
+  ['S11_REAL/hospital', '医院', 'Hospital'], ['S11_REAL/office', '办公室', 'Office'], ['S11_OBS_O1_BLOCK', '一个箱子 · 有箱子', 'One box · with box'], ['S11_OBS_O1_CLEAR', '一个箱子 · 没箱子', 'One box · no box'],
+  ['S11_OBS_O3_BLOCK', '两个箱子错开 · 有箱子', 'Two staggered boxes · with box'], ['S11_OBS_O3_CLEAR', '两个箱子错开 · 没箱子', 'Two staggered boxes · no box'], ['S11_OBS_O4_BLOCK', '走廊堵死 · 有箱子', 'Corridor blocked · with box'],
+  ['S11_OBS_O4_CLEAR', '走廊堵死 · 没箱子', 'Corridor blocked · no box'], ['ALL_LOGICAL', '全部题（混合了不同子集）', 'All cases (mixes different subsets)']];
 const BK = {scope: 'S11_MAIN_SYNTH', metric: 'right'};
-/* right-rate numbers (data/s11/rightrate.js): [done_completable, n_completable, stopped_should_stop, n_should_stop, reported_although_completable, ...] */
+/* right-rate numbers (data/s11/rightrate.js, evaluator's formal table): per scope and method, c / s / t = [numerator, decided cases, all cases of the class] */
 const RR = window.SL_RR || null;
-const rrGet = (scopes, a) => { const t = [0, 0, 0, 0, 0]; for (const sc of [].concat(scopes)) { const v = RR && RR.rows[sc] && RR.rows[sc][a]; if (v) for (let i = 0; i < 5; i++) t[i] += v[i]; } return t; };
-const rrCount = scopes => { const t = [0, 0]; for (const sc of [].concat(scopes)) { const v = RR && RR.counts[sc]; if (v) { t[0] += v[0]; t[1] += v[1]; } } return t; };
-const rrNum = (t, m) => m === 'right' ? [t[0] + t[2], t[1] + t[3]] : m === 'comp' ? [t[0], t[1]] : [t[2], t[3]];
+const rrGet = (scopes, a) => { const t = {c: [0, 0, 0], s: [0, 0, 0], t: [0, 0, 0]}; for (const sc of [].concat(scopes)) { const v = RR && RR.rows[sc] && RR.rows[sc][a]; if (v) for (const k of 'cst') for (let i = 0; i < 3; i++) t[k][i] += v[k][i]; } return t; };
+const rrMap = {right: 't', comp: 'c', stop: 's'};
+const rrNum = (t, m) => t[rrMap[m]];
+const rrCount = scopes => { const t = rrGet(scopes, 'method_R13'); return [t.c[2], t.s[2]]; };
+const rrRange = ([x, K, N]) => N ? [x / N, (x + (N - K)) / N] : null;
+const RR_SRC = () => T('数据来源：评测方正式表（B ' + (RR ? RR.commit.slice(0, 11) : '') + '）', 'Source: evaluators’ formal table (B ' + (RR ? RR.commit.slice(0, 11) : '') + ')');
 const METRICS = () => [['right', T('总做对率', 'Overall right rate')], ['comp', T('可完成题的完成率', 'Completion on completable cases')], ['stop', T('该停的题的正确停下率', 'Correct stops on should-stop cases')], ['mean', T('平均得分', 'Mean score')], ['sev', T('严重错误（越少越好）', 'Severe errors (fewer is better)')]];
 function barRows(scope, m, arms) {
   const low = m === 'sev';
   return arms.map(a => {
-    if (m === 'right' || m === 'comp' || m === 'stop') { const [n, d] = rrNum(rrGet(scope, a), m); return d ? {a, v: n / d, num: n, den: d, share: n / d} : null; }
+    if (m === 'right' || m === 'comp' || m === 'stop') { const [n, K, N] = rrNum(rrGet(scope, a), m); return K ? {a, v: n / K, num: n, den: K, unk: N - K, share: n / K} : null; }
     const r = rate(Array.isArray(scope) ? scope[0] : scope, a); if (!r) return null;
     const v = rkVal(r, m), num = m === 'sev' ? r.severe : v, den = m === 'sev' ? r.severe_known : 1;
     const share = m === 'mean' ? Math.max(0, v) : Math.min(1, v * 4);
@@ -285,29 +289,30 @@ function rowsHTML(rows, m) {
 }
 const MEANNOTE = () => T('平均得分 = 每道题得分的平均（+1 完成指令，+0.3 没完成但安全地停下并报告，0 没完成，−1 严重错误）', 'mean score = average of the per-case score (+1 completed, +0.3 not completed but stopped safely and reported, 0 not completed, −1 severe error)');
 const MEXP = () => ({
-  right: T('总做对率 = （可完成的题里完成了指令的 + 该停的题里正确停下的）÷ 这个测试集里判得出结局的题。', 'Overall right rate = (completable cases completed + should-stop cases correctly stopped) ÷ cases of this test set whose outcome could be decided.'),
+  right: T('总做对率 = （可完成的题里完成了指令的 + 该停的题里正确停下的）÷ 这个测试集里结局已知的题。', 'Overall right rate = (completable cases completed + should-stop cases correctly stopped) ÷ cases of this test set whose outcome could be decided.'),
   comp: T('可完成题的完成率 = 指令有可达成目标的题里，完成了指令的比例。', 'Completion on completable cases = the share of cases with a reachable target in which the instruction was completed.'),
   stop: T('该停的题的正确停下率 = 指令指的门不存在、或走廊被堵死的题里，安全地停下并报告的比例（停下报告就算对）。', 'Correct stops on should-stop cases = the share of cases where the opening named does not exist or the corridor is blocked in which the method stopped safely and reported (a report counts as correct).'),
   mean: MEANNOTE(), sev: T('严重错误 = 进错门或与障碍接触；数字是出现次数，越少越好。', 'Severe error = entering the wrong opening or touching an obstacle; the number is a count, fewer is better.')});
 function threeTable(scope) {
   return `<div class="tbl" style="margin-top:12px"><table class="t s10t rrt"><thead><tr><th>${T('方法', 'Method')}</th><th>${T('总做对率', 'Overall right rate')}</th><th>${T('可完成题的完成率', 'Completion on completable')}</th><th>${T('该停的题的正确停下率', 'Correct stops')}</th></tr></thead><tbody>
-    ${RK_CORE.map(a => { const t = rrGet(scope, a), cell = m => { const [n, d] = rrNum(t, m); return d ? `<b>${(100 * n / d).toFixed(1)}%</b><span class="u">${fmt(n)} / ${fmt(d)}</span>` : '—'; };
-      return `<tr class="${a === 'method_R13' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[a] || 'var(--sand8)'}"></span>${esc(armName(a))}</td><td class="c">${cell('right')}</td><td class="c">${cell('comp')}</td><td class="c">${cell('stop')}</td></tr>`; }).join('')}
+    ${RK_CORE.map(a => { const t = rrGet(scope, a), cell = k => { const [n, K, N] = t[k]; if (!K) return '—'; const rg = rrRange(t[k]);
+        return `<b>${(100 * n / K).toFixed(1)}%</b><span class="u">${fmt(n)} / ${fmt(K)}</span>${N > K ? `<span class="u unk">${T('判不出 ' + fmt(N - K) + ' 题；全错 / 全对：' + (100 * rg[0]).toFixed(1) + '% – ' + (100 * rg[1]).toFixed(1) + '%', 'undecided ' + fmt(N - K) + '; all wrong / all right: ' + (100 * rg[0]).toFixed(1) + '% – ' + (100 * rg[1]).toFixed(1) + '%')}</span>` : ''}`; };
+      return `<tr class="${a === 'method_R13' ? 'me' : ''}"><td class="nm"><span class="sw" style="background:${ARMC[a] || 'var(--sand8)'}"></span>${esc(armName(a))}</td><td class="c">${cell('t')}</td><td class="c">${cell('c')}</td><td class="c">${cell('s')}</td></tr>`; }).join('')}
     </tbody></table></div>`;
 }
 function barsCard(st, scopes, title) {
   const m = st.metric, sc = scopes.find(x => x[0] === st.scope) || scopes[0];
   const cnt = rrCount(sc[0]);
-  const real = /^S11_REAL/.test(sc[0]); const r13 = rrGet(sc[0], 'method_R13');
-  const realNote = real && r13[1] ? `<p class="note rrnote">${T('真实地图：所有方法的总做对率都不高；本方法的主要问题是——指令有可达成的门，却停下报告而没有进门：可完成的 ' + fmt(r13[1]) + ' 题里有 ' + fmt(r13[4]) + ' 题（' + (100 * r13[4] / r13[1]).toFixed(1) + '%）是这样。', 'Real maps: every method has a low overall right rate; our method’s main problem is that it stops and reports although a reachable opening exists: this happens in ' + fmt(r13[4]) + ' of the ' + fmt(r13[1]) + ' completable cases (' + (100 * r13[4] / r13[1]).toFixed(1) + '%).')}</p>` : '';
+  const real = /^S11_REAL/.test(sc[0]); const r13 = rrGet(sc[0], 'method_R13'); const rp = RR && RR.rep && RR.rep[sc[0]] && RR.rep[sc[0]].method_R13;
+  const realNote = real && rp ? `<p class="note rrnote">${T('真实地图：所有方法的总做对率都不高；本方法的主要问题是——指令有可达成的门，却停下报告而没有进门：可完成的 ' + fmt(rp[1]) + ' 题里有 ' + fmt(rp[0]) + ' 题（' + (100 * rp[0] / rp[1]).toFixed(1) + '%）是这样。', 'Real maps: every method has a low overall right rate; our method’s main problem is that it stops and reports although a reachable opening exists: this happens in ' + fmt(rp[0]) + ' of the ' + fmt(rp[1]) + ' completable cases (' + (100 * rp[0] / rp[1]).toFixed(1) + '%).')}</p>` : '';
   return `<article class="card metric rkbars"><div class="card-h"><span class="tile">∑</span><h3>${esc(title)}${scopes.length > 1 ? ' · ' + esc(T(sc[1], sc[2])) : ''}</h3></div>
     <nav class="atoc s10nav rkm" style="margin:0 0 8px">${METRICS().map(([k, l]) => `<a class="${m === k ? 'on' : ''}" data-m="${k}">${l}</a>`).join('')}</nav>
     ${scopes.length > 1 ? `<nav class="atoc s10nav rks" style="margin:0 0 10px">${scopes.map(([k, zh, en]) => `<a class="${st.scope === k ? 'on' : ''}" data-s="${k}">${T(zh, en)}</a>`).join('')}</nav>` : ''}
-    <p class="note" style="margin:0 0 6px">${esc(T('这个测试集', 'This test set') + ': ' + fmt(cnt[0] + cnt[1]) + T(' 题，其中可完成 ', ' cases, ') + (T('', '')) + fmt(cnt[0]) + T(' 题、该停 ', ' completable and ') + fmt(cnt[1]) + T(' 题。', ' should-stop.')) }${sc[0] === 'MIXED' ? ' ' + esc(T('“全部题”把不同子集混在一起，只作参考，不同子集的难度和该停的比例不同。', '“All cases” mixes different subsets, which differ in difficulty and in how many cases should stop; use it for reference only.')) : ''}</p>
+    <p class="note" style="margin:0 0 6px">${esc(T('这个测试集共 ', 'This test set has ') + fmt(cnt[0] + cnt[1]) + T(' 题，其中可完成 ', ' cases: ') + fmt(cnt[0]) + T(' 题、该停 ', ' completable and ') + fmt(cnt[1]) + T(' 题。', ' should-stop.'))}${sc[0] === 'ALL_LOGICAL' ? ' ' + esc(T('“全部题”把不同子集混在一起（有箱子和没箱子的版本都算），只作参考：不同子集的难度和该停的题的比例不同。', '“All cases” mixes different subsets (both the with-box and the no-box versions count) and is for reference only: the subsets differ in difficulty and in the share of cases that should stop.')) : ''}</p>
     ${rowsHTML(barRows(sc[0], m, RK_CORE), m)}
     <p class="note" style="margin:8px 0 0">${esc(MEXP()[m])}</p>
     ${threeTable(sc[0])}${realNote}
-    <div class="foot src">${T('按公开答案计算，待评测方的正式表。有箱子和没箱子是同一题的两个版本，绕障只算有箱子版本；结局判不出的题不计入分母。', 'Computed from the published answers, pending the evaluators’ formal table. With-box and no-box are two versions of the same case, so detour sets count the with-box version only; cases whose outcome could not be decided are left out of the denominators.')}${m === 'mean' || m === 'sev' ? ' · ' + esc(SRC(S.sources.rates)) : ''}</div></article>`;
+    <div class="foot src">${esc(RR_SRC())}${T('。分母只含结局已知的题；结局判不出的题另列，并给出它们全错或全对时的范围。', '. Denominators contain only cases whose outcome is known; undecided cases are listed separately with the range if all were wrong or all were right.')}${m === 'mean' || m === 'sev' ? ' · ' + esc(SRC(S.sources.rates)) : ''}</div></article>`;
 }
 function mountBars(host, scopes, title) {
   if (!host) return;
@@ -317,20 +322,25 @@ function mountBars(host, scopes, title) {
 }
 const SET_SCOPES = {Y1: [['S11_MAIN_SYNTH', '合成走廊', 'Synthetic corridors']], Y2: [['S11_REAL', '全部', 'All'], ['S11_REAL/hospital', '医院', 'Hospital'], ['S11_REAL/office', '办公室', 'Office']],
   Y3: [['S11_CLUTTER', '小障碍走廊', 'Small-obstacle corridors'], ['S11_DIVERSITY_F1', '大厅', 'Hall'], ['S11_DIVERSITY_F2', '拐角', 'Corner']],
-  Y4: [['S11_OBS_O1_BLOCK', '一个箱子', 'One box'], ['S11_OBS_O3_BLOCK', '两个箱子错开', 'Two staggered boxes'], ['S11_OBS_O4_BLOCK', '走廊堵死', 'Corridor blocked']]};
+  Y4: [['S11_OBS_O1_BLOCK', '一个箱子 · 有箱子', 'One box · with box'], ['S11_OBS_O1_CLEAR', '一个箱子 · 没箱子', 'One box · no box'], ['S11_OBS_O3_BLOCK', '两个箱子错开 · 有箱子', 'Two staggered boxes · with box'], ['S11_OBS_O3_CLEAR', '两个箱子错开 · 没箱子', 'Two staggered boxes · no box'],
+    ['S11_OBS_O4_BLOCK', '走廊堵死 · 有箱子', 'Corridor blocked · with box'], ['S11_OBS_O4_CLEAR', '走廊堵死 · 没箱子', 'Corridor blocked · no box']]};
 const SET_TITLE = {Y1: ['合成测试集', 'Synthetic test set'], Y2: ['真实地图测试集', 'Real-map test set'], Y3: ['障碍物与场景族', 'Obstacles and scenes'], Y4: ['绕障', 'Detour']};
 function mountSetBars(host, setId) { mountBars(host, SET_SCOPES[setId], T('本测试集的方法排行', 'Method ranking on this test set')); }
 
 /* ---------- home (总览) ---------- */
 function homeHTML() {
+  const group = (sc, label) => { const rows = barRows(sc, 'right', RK_CORE), cnt = rrCount(sc);
+    return `<p class="note" style="margin:0 16px 4px">${label ? esc(label) + ' · ' : ''}${T('总做对率（可完成 ' + fmt(cnt[0]) + ' 题 + 该停 ' + fmt(cnt[1]) + ' 题）', 'Overall right rate (' + fmt(cnt[0]) + ' completable + ' + fmt(cnt[1]) + ' should-stop cases)')}</p>${rowsHTML(rows, 'right')}`; };
   const cats = ['Y1', 'Y2', 'Y3', 'Y4'].map(id => {
-    const sc = SET_SCOPES[id].filter(x => !/hospital|office/.test(x[0])).map(x => x[0]);
-    const rows = barRows(sc, 'right', RK_CORE), cnt = rrCount(sc);
-    const r13 = rrGet(sc, 'method_R13');
-    return `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${fmt(cnt[0] + cnt[1])}${T(' 题', ' cases')}</span></div>
-      <p class="note" style="margin:0 16px 4px">${T('总做对率（可完成 ' + fmt(cnt[0]) + ' 题 + 该停 ' + fmt(cnt[1]) + ' 题）', 'Overall right rate (' + fmt(cnt[0]) + ' completable + ' + fmt(cnt[1]) + ' should-stop cases)')}</p>${rowsHTML(rows, 'right')}${id === 'Y2' && r13[1] ? `<p class="note rrnote" style="margin:8px 16px 0">${T('所有方法都不高；本方法的主要问题是有可达成的门却停下报告（' + fmt(r13[4]) + ' / ' + fmt(r13[1]) + ' 道可完成的题）。', 'All methods are low; our method’s main problem is stopping to report although an opening is reachable (' + fmt(r13[4]) + ' of ' + fmt(r13[1]) + ' completable cases).')}</p>` : ''}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
+    const all = SET_SCOPES[id].filter(x => !/hospital|office/.test(x[0])).map(x => x[0]);
+    const rp = id === 'Y2' && RR && RR.rep && RR.rep['S11_REAL'] && RR.rep['S11_REAL'].method_R13;
+    let body;
+    if (id === 'Y4') body = group(all.filter(x => /BLOCK/.test(x)), T('有箱子（三类合计）', 'With box (three kinds together)')) + `<div style="height:8px"></div>` + group(all.filter(x => /CLEAR/.test(x)), T('没箱子（三类合计）', 'No box (three kinds together)'));
+    else body = group(all, '');
+    const n = rrCount(all);
+    return `<article class="card metric homecat" data-set="${id}"><div class="card-h"><span class="tile">${{Y1: '合', Y2: '真', Y3: '障', Y4: '绕'}[id]}</span><h3>${esc(T(SET_TITLE[id][0], SET_TITLE[id][1]))}</h3><span class="more">${fmt(n[0] + n[1])}${T(' 题', ' cases')}${id === 'Y4' ? T('（有箱子、没箱子各算一份）', ' (with-box and no-box counted separately)') : ''}</span></div>${body}${rp ? `<p class="note rrnote" style="margin:8px 16px 0">${T('所有方法都不高；本方法的主要问题是有可达成的门却停下报告（' + fmt(rp[0]) + ' / ' + fmt(rp[1]) + ' 道可完成的题）。', 'All methods are low; our method’s main problem is stopping to report although an opening is reachable (' + fmt(rp[0]) + ' of ' + fmt(rp[1]) + ' completable cases).')}</p>` : ''}<div class="foot"><a class="btn" href="#list" data-open="${id}">${T('打开这个测试集', 'Open this test set')} →</a></div></article>`;
   }).join('');
-  return `<div class="agrid s10grid s11grid" id="homecats"><div id="homerank"></div>${cats}</div>`;
+  return `<div class="agrid s10grid s11grid" id="homecats"><div id="homerank"></div>${cats}</div><p class="note" style="margin-top:10px">${esc(RR_SRC())}${T('。分母只含结局已知的题；每个测试集页面里列出结局判不出的题数和全错 / 全对的范围。', '. Denominators contain only cases whose outcome is known; each test-set page lists the undecided cases and the range if all were wrong or all right.')}</p>`;
 }
 function mountHome(root) {
   mountBars(root.querySelector('#homerank'), BAR_SCOPES, T('各方法排行', 'Ranking of the methods'));

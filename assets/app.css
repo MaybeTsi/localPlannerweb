@@ -792,3 +792,4 @@ table.rkt td.c b{display:block}
 .s11grid table.s10t th:last-child{white-space:normal;min-width:90px}
 .rrnote{color:var(--ink);background:var(--or2);border-radius:8px;padding:8px 12px;margin:8px 0 0}
 table.rrt td.c b{display:block}
+table.rrt .u.unk{color:var(--ink3);font-size:10.5px;white-space:normal;max-width:210px}

@@ -1,6 +1,6 @@
-/* "How the method thinks": the method's probabilities over {follow the words, each opening, not seen yet} while it drives, in step with the replay,
-   its expected scores at the decision, and the scorer's full POMDP next to it. Data: data/belief/<case>__<arm>.js (built by tools/build_belief.py from the
-   per-cycle diagnostic logs; the designated exports CP-C-B / CP-B-RB are not delivered yet, the page says "to be exported" where data are missing). */
+/* "How the method thinks": the method's probabilities over {follow the words, each opening, an opening not seen yet} while it drives, in step with the replay,
+   next to the scorer's full POMDP at its decision. Data: data/belief/ (built by tools/build_belief.py from the online-belief export of C (CP-C-B) and the
+   reference-belief export of B (CP-B-RB)). Probabilities are shown as exported. */
 (function () {
 'use strict';
 const X = window.SLX;
@@ -8,116 +8,166 @@ if (!X) return;
 const {$, esc} = X;
 const z = () => document.documentElement.lang === 'zh-CN';
 const T = (zh, en) => z() ? zh : en;
-const UNRES = 'UNRESOLVED_BEYOND_OBSERVED_MAP', LIT = 'Z0_LITERAL';
 const DOOR = ['#12A594', '#3E63DD', '#D6409F', '#E9A23B', '#46A758', '#AB4ABA', '#0090FF', '#CC4E00'];
-const COL = {lit: '#6E56CF', un: '#8D8D86'};
+const LITC = '#6E56CF', UNC = '#B9B7B0';
 
-let BIDX = null; window.SL_BELIEF_INDEX = o => { BIDX = o; };
+/* ---------- loading ---------- */
+let IDX = null; window.SL_BELIEF_INDEX = o => { IDX = o; };
 const chunks = {}, waits = {};
-window.SL_BELIEF = (k, o) => { chunks[k] = o; (waits[k] || []).forEach(f => f(o)); delete waits[k]; };
-const loadScript = src => new Promise(res => { const s = document.createElement('script'); s.src = src; s.onload = () => res(true); s.onerror = () => res(false); document.head.appendChild(s); });
-const armOf = e => e.s11 ? 'method_R13' : 'method_v6';
-const keyOf = e => e.id.replace(/:/g, '_') + '__' + armOf(e);
-function get(e) {
-  const run = () => BIDX && (BIDX[e.id] || []).includes(armOf(e)) ? (chunks[keyOf(e)] ? Promise.resolve(chunks[keyOf(e)]) : new Promise(res => { if (!waits[keyOf(e)]) { waits[keyOf(e)] = []; loadScript(`data/belief/${keyOf(e)}.js`).then(ok => { if (!ok) res(null); }); } waits[keyOf(e)].push(res); })) : Promise.resolve(null);
-  return BIDX ? run() : loadScript('data/belief/index.js').then(run);
+const onChunk = (k, o) => { chunks[k] = o; (waits[k] || []).forEach(f => f(o)); delete waits[k]; };
+window.SL_BELIEF = onChunk; window.SL_BELIEF_REF = onChunk;
+const T32 = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t.push(c >>> 0); } return t; })();
+const crc32 = str => { const b = new TextEncoder().encode(str); let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = T32[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+const script = (src, onerr) => new Promise(res => { const s = document.createElement('script'); s.src = src; s.onload = () => res(true); s.onerror = () => { onerr && onerr(); res(false); }; document.head.appendChild(s); });
+const index = () => IDX ? Promise.resolve() : script('data/belief/index.js');
+function chunk(name, path) {
+  if (chunks[name]) return Promise.resolve(chunks[name]);
+  return new Promise(res => { if (!waits[name]) { waits[name] = []; script(path, () => onChunk(name, {})); } waits[name].push(res); });
+}
+const dsOf = id => id.split(':')[0];
+const isObstacle = id => /:O[134]:(BLOCK|CLEAR)$/.test(id);
+const getOnline = (id, arm) => index().then(() => { const ds = dsOf(id), n = IDX && IDX.chunks[`${ds}__${arm}`]; if (!n || isObstacle(id)) return null; const nm = `${ds}__${arm}__${crc32(id) % n}`; return chunk(nm, `data/belief/${nm}.js`).then(o => o[id] || null); });
+const getRef = id => index().then(() => { const ds = dsOf(id), n = IDX && IDX.ref_chunks[ds]; if (!n || isObstacle(id)) return null; const nm = `${ds}__${crc32(id) % n}`; return chunk(nm, `data/belief/ref/${nm}.js`).then(o => o[id] || null); });
+const armsOf = e => { const ds = dsOf(e.id); return ((IDX && IDX.arms && IDX.arms[ds]) || []).filter(a => X.dev || a === 'method_R13' || (!e.s11 && a === 'method_v6')); };
+const armLabel = a => ({method_R13: T('本方法', 'our method'), method_v6: T('上一版 v6.11', 'previous version v6.11'), method_v4: T('更早的 v4', 'earlier v4')})[a] || a;
+
+/* ---------- doors: same letter and colour on the map and in every bar ---------- */
+function buildDoors(e, on, rf) {
+  const doors = [], byRef = {}, byOn = {};
+  if (rf && rf.c) for (const c of rf.c) { if (!(rf.p && rf.p[c[0]] > 0) && !c[5]) continue; const d = {ref: c[0], on: null, x: c[1], y: c[2], side: c[3], w: c[4]}; doors.push(d); byRef[c[0]] = d; }
+  if (on) on.h.forEach((h, i) => { if (h[1] === 'literal' || h[1] === 'unseen') return; const k = on.m && on.m[String(i)]; let d = k && byRef[k];
+    if (!d) { d = {ref: null, on: i, x: h[2], y: h[3], side: h[4], w: 1.0}; doors.push(d); } else d.on = i; byOn[i] = d; });
+  const s = e.m.s || [0, 0, 0];
+  doors.filter(d => d.x != null).sort((p, q) => Math.hypot(p.x - s[0], p.y - s[1]) - Math.hypot(q.x - s[0], q.y - s[1])).forEach((d, i) => { d.n = String.fromCharCode(65 + i); d.c = DOOR[i % DOOR.length]; d.name = T('门 ', 'Opening ') + d.n; });
+  doors.forEach(d => { if (!d.name) { d.name = T('门 ?', 'Opening ?'); d.c = DOOR[7]; } });
+  return {doors, byRef, byOn};
 }
 
-/* ---------- names and colours ---------- */
-function names(b) {
-  const out = {}; let d = 0;
-  for (const h of b.h) { if (h === LIT) out[h] = [T('照字面', 'Follow the words'), COL.lit]; else if (h === UNRES) out[h] = [T('还没看到', 'Not seen yet'), COL.un]; else { out[h] = [T('门 ', 'Opening ') + String.fromCharCode(65 + d), DOOR[d % DOOR.length]]; d++; } }
-  return out;
-}
-const pct = v => (100 * v).toFixed(0) + '%';
-const EXN = ['不能', '能', ''];
+/* ---------- bars ---------- */
+const f2 = v => v == null ? '—' : v.toFixed(2);
+const bar = (c, name, v, cls, label) => `<div class="bb ${cls || ''}" style="--c:${c}"><span class="nm">${esc(name)}</span><span class="btrk"><i style="width:${Math.max(0, Math.min(1, v)) * 80}%"></i><b>${label != null ? label : f2(v)}</b></span></div>`;
 
-/* ---------- explanation of the decision ---------- */
-function why(b, nm) {
-  const d = b.d; if (!d) return T('这一题里本方法一直没有做出决定。', 'The method never made a decision in this case.');
-  const lit = d.sc[LIT], litAvail = d.av[LIT] != null, openings = Object.keys(d.av).filter(k => k !== LIT);
-  const best = openings.slice().sort((p, q) => d.av[q] - d.av[p])[0];
-  const f = v => v.toFixed(2);
-  if (d.a === 'COMMIT') {
-    const n = (nm[d.id] || [d.id])[0];
-    return litAvail ? T(`照字面的期望得分是 ${f(lit)}，${n} 的是 ${f(d.av[d.id])}，${n} 更高，所以进 ${n}。`, `Following the words scores ${f(lit)} and ${n} scores ${f(d.av[d.id])}, which is higher, so it enters ${n}.`)
-      : T(`照字面在这里执行不了；能执行的门里，${n} 的期望得分最高（${f(d.av[d.id])}），所以进 ${n}。`, `Following the words cannot be carried out here; among the openings that can be, ${n} has the highest expected score (${f(d.av[d.id])}), so it enters ${n}.`);
+function leftRows(on, DS, pt) {
+  const rows = [];
+  const idxLit = on.h.findIndex(h => h[1] === 'literal'), idxUn = on.h.findIndex(h => h[1] === 'unseen');
+  const mk = (i, name, c, kind) => { const p = pt[2][i]; if (p == null) return; const a = pt[3][i]; rows.push({i, name, c, kind, p, na: a === 0}); };
+  if (idxLit >= 0) mk(idxLit, T('照字面', 'Follow the words'), LITC, 'lit');
+  DS.doors.filter(d => d.on != null).forEach(d => mk(d.on, d.name, d.c, 'door'));
+  if (idxUn >= 0) mk(idxUn, T('还没看到的门', 'Opening not seen yet'), UNC, 'un');
+  return rows;
+}
+
+/* ---------- one-sentence reason ---------- */
+function why(on, DS, name) {
+  const d = on.d; if (!d) return T('这一题里本方法在运行中没有做出标准的决定（原日志没有记录），所以这里不给解释。', 'In this case the method made no standard decision while running (the original log has none), so no explanation is given.');
+  let pt = on.t[0]; for (const q of on.t) if (q[0] <= d[0] + 1e-6) pt = q;
+  const iLit = on.h.findIndex(h => h[1] === 'literal'), p = i => pt[2][i];
+  const exec = DS.doors.filter(x => x.on != null && p(x.on) != null && pt[3][x.on] !== 0).sort((a, b) => p(b.on) - p(a.on));
+  const litNo = iLit >= 0 && pt[3][iLit] === 0, litP = iLit >= 0 ? p(iLit) : null;
+  const e2 = v => v == null ? '—' : v.toFixed(2);
+  if (d[2] === 'COMMIT') {
+    const x = DS.byOn[d[3]]; if (!x) return T('本方法选了一扇门，但这扇门在公开材料里没有对上编号。', 'The method chose an opening that could not be matched to a public number.');
+    const pre = litNo ? T('照字面在这里执行不了；', 'Following the words cannot be carried out here; ') : '';
+    if (exec.length > 1 && exec[0] === x) return pre + T(`能执行的门里${x.name} 概率最高（${e2(p(x.on))} 对 ${e2(p(exec[1].on))}），所以进${x.name}。`, `among the openings that can be used, ${x.name} has the highest probability (${e2(p(x.on))} against ${e2(p(exec[1].on))}), so it enters ${x.name}.`.replace(/^./, c => pre ? c : c.toUpperCase()));
+    if (exec.length <= 1) return pre + T(`能执行的门里只有${x.name}（概率 ${e2(p(x.on))}），所以进${x.name}。`, `among the openings that can be used only ${x.name} remains (probability ${e2(p(x.on))}), so it enters ${x.name}.`.replace(/^./, c => pre ? c : c.toUpperCase()));
+    return pre + T(`${x.name} 的概率（${e2(p(x.on))}）不是最高的，但把“能执行的程度”和期望得分一起算，它最划算（期望得分 ${e2(pt[4][x.on])}），所以进${x.name}。`, `${x.name} is not the most probable (${e2(p(x.on))}), but weighing how executable it is and its expected score (${e2(pt[4][x.on])}) it is the best choice, so it enters ${x.name}.`);
   }
-  if (d.a === 'KEEP_LITERAL') return best != null ? T(`照字面的期望得分是 ${f(d.av[LIT] != null ? d.av[LIT] : lit)}，不低于任何一扇能执行的门（最高 ${f(d.av[best])}），所以照字面走。`, `Following the words scores ${f(d.av[LIT] != null ? d.av[LIT] : lit)}, not lower than any opening that can be used (best ${f(d.av[best])}), so it follows the words.`)
-    : T(`没有能执行的门，照字面的期望得分是 ${f(lit)}，所以照字面走。`, `No opening can be used and following the words scores ${f(lit)}, so it follows the words.`);
-  return T('能执行的做法都不如停下报告，所以停下报告。', 'None of the actions that can be carried out beats stopping to report, so it stops and reports.');
+  if (d[2] === 'KEEP_LITERAL') {
+    const best = exec[0];
+    return best ? T(`照字面的概率是 ${e2(litP)}，门里最高的${best.name} 只有 ${e2(p(best.on))}，照字面又能执行，所以照字面走。`, `Following the words has probability ${e2(litP)} against ${e2(p(best.on))} for the best opening (${best.name}) and it can be carried out, so it follows the words.`)
+      : T(`照字面的概率是 ${e2(litP)}，没有能执行的门，所以照字面走。`, `Following the words has probability ${e2(litP)} and no opening can be used, so it follows the words.`);
+  }
+  return T('能执行的做法里没有比停下报告更值得的，所以停下报告。', 'None of the actions that can be carried out is worth more than stopping to report, so it stops and reports.');
 }
 
-/* ---------- chart ---------- */
-function chartSVG(b, nm) {
-  const W = 360, H = 168, L = 30, R = 74, Tm = 10, Bm = 34, pw = W - L - R, ph = H - Tm - Bm;
-  const maxP = Math.max(1, ...b.c.map(r => r[1]), b.d ? b.d.p : 0) * 1.02;
-  const x = p => L + p / maxP * pw, y = v => Tm + (1 - v) * ph;
-  const lines = b.h.map((h, i) => ({h, pts: b.c.map(r => [x(r[1]), y(r[2][i])]), end: b.c.length ? b.c[b.c.length - 1][2][i] : 0})).filter(l => l.pts.length);
-  // end labels, pushed apart
-  const labs = lines.map(l => ({h: l.h, y: l.pts[l.pts.length - 1][1]})).sort((p, q) => p.y - q.y);
-  for (let i = 1; i < labs.length; i++) if (labs[i].y - labs[i - 1].y < 13) labs[i].y = labs[i - 1].y + 13;
-  const ly = Object.fromEntries(labs.map(l => [l.h, l.y]));
-  const grid = [0, .5, 1].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 4}" y="${y(v) + 3}" text-anchor="end" font-size="9" fill="var(--ink3)">${pct(v)}</text>`).join('');
-  const ticks = []; for (let p = 0; p <= maxP; p += 2) ticks.push(p);
-  const xt = ticks.map(p => `<text x="${x(p)}" y="${Tm + ph + 12}" text-anchor="middle" font-size="9" fill="var(--ink3)">${p}</text>`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" class="bchart" role="img" aria-label="${esc(T('概率随前进距离的变化', 'Probabilities against distance driven'))}">${grid}${xt}<text x="${L + pw / 2}" y="${H - 3}" text-anchor="middle" font-size="9" fill="var(--ink3)">${T('前进距离（m）', 'distance driven (m)')}</text>
-    ${b.d ? `<line x1="${x(b.d.p)}" x2="${x(b.d.p)}" y1="${Tm}" y2="${Tm + ph}" stroke="var(--ink2)" stroke-dasharray="3 3"/><text x="${x(b.d.p) + 3}" y="${Tm + 8}" font-size="9" fill="var(--ink2)">${T('做决定', 'decision')} ${b.d.p.toFixed(1)} m</text>` : ''}
-    ${lines.map(l => `<polyline fill="none" stroke="${nm[l.h][1]}" stroke-width="${l.h === LIT ? 2.4 : 2}" stroke-linejoin="round" points="${l.pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}"/><text x="${W - R + 5}" y="${(ly[l.h] + 3).toFixed(1)}" font-size="10.5" font-weight="600" fill="${nm[l.h][1]}">${esc(nm[l.h][0])}</text>`).join('')}
+/* ---------- chart: probabilities against distance driven ---------- */
+function chart(on, DS, names) {
+  const W = 360, H = 150, Lm = 30, Rm = 92, Tm = 8, Bm = 24, pw = W - Lm - Rm, ph = H - Tm - Bm;
+  const maxP = Math.max(1, ...on.t.map(r => r[1]), on.d ? on.d[1] : 0) * 1.03, x = p => Lm + p / maxP * pw, y = v => Tm + (1 - v) * ph;
+  const lines = on.h.map((h, i) => ({i, pts: on.t.filter(r => r[2][i] != null).map(r => [x(r[1]), y(r[2][i])])})).filter(l => l.pts.length && names[l.i]);
+  const labs = lines.map(l => ({i: l.i, y: l.pts[l.pts.length - 1][1]})).sort((a, b) => a.y - b.y);
+  for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < 12) labs[k].y = labs[k - 1].y + 12;
+  const ly = Object.fromEntries(labs.map(l => [l.i, l.y]));
+  const grid = [0, .5, 1].map(v => `<line x1="${Lm}" x2="${W - Rm}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${Lm - 4}" y="${y(v) + 3}" text-anchor="end" font-size="9" fill="var(--ink3)">${(v * 100).toFixed(0)}%</text>`).join('');
+  const xt = []; for (let p = 0; p <= maxP; p += 2) xt.push(p);
+  return `<svg viewBox="0 0 ${W} ${H}" class="bchart" role="img">${grid}${xt.map(p => `<text x="${x(p)}" y="${Tm + ph + 12}" text-anchor="middle" font-size="9" fill="var(--ink3)">${p}</text>`).join('')}
+    <text x="${Lm + pw / 2}" y="${H - 3}" text-anchor="middle" font-size="9" fill="var(--ink3)">${T('前进距离（m）', 'distance driven (m)')}</text>
+    ${on.d ? `<line x1="${x(on.d[1])}" x2="${x(on.d[1])}" y1="${Tm}" y2="${Tm + ph}" stroke="var(--ink2)" stroke-dasharray="3 3"/><text x="${x(on.d[1]) + 3}" y="${Tm + 8}" font-size="9" fill="var(--ink2)">${T('做决定', 'decision')}</text>` : ''}
+    ${lines.map(l => `<polyline fill="none" stroke="${names[l.i][1]}" stroke-width="2" stroke-linejoin="round" points="${l.pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}"/><text x="${W - Rm + 5}" y="${(ly[l.i] + 3).toFixed(1)}" font-size="10" font-weight="600" fill="${names[l.i][1]}">${esc(names[l.i][0])}</text>`).join('')}
     <line id="bnow" x1="${x(0)}" x2="${x(0)}" y1="${Tm}" y2="${Tm + ph}" stroke="var(--accent)" stroke-width="1.5"/></svg>`;
 }
 
-/* ---------- reference (scorer's full POMDP) ---------- */
-function refHTML(rec) {
-  const head = `<h4>${T('评分器里的完整 POMDP', 'The scorer’s full POMDP')}</h4><p class="note" style="margin:0 0 6px">${T('它知道整张地图和出题时各种意思的比例，但不知道这一题的答案。', 'It knows the whole map and how often each kind of meaning occurs in the test set, but not the answer to this case.')}</p>`;
-  if (rec === undefined) return head + `<p class="note">${T('打开“显示真实意思”，这里会显示参考在决定时的期望得分。', 'Switch on “Show the intended meaning” to see the reference’s expected scores at its decision here.')}</p>`;
-  const r = rec && rec.r;
-  if (!r || r.d === 'UNKNOWN') return head + `<p class="note">${T('这一题的参考未定（参考模型不处理箱子，或这类题的出题比例没登记）。', 'The reference is undecided for this case (it does not handle boxes, or the generation likelihood of this kind of case is not registered).')}</p><p class="note"><span class="nexp">${T('概率：待导出（评分方的参考概率）', 'probabilities: to be exported')}</span></p>`;
-  const sc = r.sc || {}, rows = [];
-  if (sc.literal != null && sc.literal !== 'UNKNOWN') rows.push([T('照字面', 'Follow the words'), sc.literal, r.d === 'LITERAL', COL.lit]);
-  let k = 0; if (sc.structures && sc.structures !== 'UNKNOWN') for (const id in sc.structures) rows.push([T('候选门 ', 'Candidate ') + (++k), sc.structures[id], r.d === id, DOOR[(k - 1) % DOOR.length]]);
-  if (sc.report != null && sc.report !== 'UNKNOWN') rows.push([T('停下报告', 'Stop and report'), sc.report, r.d === 'REPORT', COL.un]);
-  const lo = Math.min(-1, ...rows.map(x => x[1])), hi = Math.max(1, ...rows.map(x => x[1]));
-  return head + `<div class="bb-list">${rows.map(([l, v, best, c]) => `<div class="bb ${best ? 'best' : ''}" style="--c:${c}"><span class="sw"></span><span class="nm">${esc(l)}</span><span class="bar"><i style="width:${Math.max(2, (v - lo) / (hi - lo) * 100)}%"></i></span><b>${v.toFixed(2)}</b></div>`).join('')}</div>
-    <p class="note">${T('参考选的是：', 'The reference chooses: ')}<b>${esc(r.d === 'LITERAL' ? T('照字面', 'follow the words') : r.d === 'REPORT' ? T('停下报告', 'stop and report') : T('进候选门 ', 'enter candidate ') + (Object.keys(sc.structures || {}).indexOf(r.d) + 1))}</b>${T('（期望得分最高）。', ' (the highest expected score).')}</p>
-    <p class="note">${T('这里的候选门编号和左边的门 A、B 不是一一对应的，等评分方导出参考概率后再对齐。', 'The candidate numbers here do not map one-to-one onto openings A, B on the left; they will be aligned once the scoring team exports the reference probabilities.')}</p><p class="note"><span class="nexp">${T('概率：待导出（评分方的参考概率）', 'probabilities: to be exported')}</span></p>`;
+/* ---------- reference panel ---------- */
+function refHTML(e, rf, DS) {
+  const head = `<h4>${T('评分器里的完整 POMDP', 'The scorer’s full POMDP')}</h4>`;
+  if (isObstacle(e.id)) return head + `<p class="note">${T('参考模型不处理箱子，所以有箱子 / 没箱子的题没有参考的概率。', 'The reference model does not handle boxes, so with-box / no-box cases have no reference probabilities.')}</p>`;
+  if (!rf || !rf.p) return head + `<p class="note">${T('这一题的参考未定。', 'The reference is undecided for this case.')}</p>`;
+  const av = new Set(rf.av || []), dec = rf.d, rows = [];
+  const dn = id => DS.byRef[id] || null;
+  if (rf.p.z0 != null) rows.push({k: 'LITERAL', name: T('照字面', 'Follow the words'), c: LITC, p: rf.p.z0, na: !av.has('LITERAL'), sel: dec === 'LITERAL'});
+  const cands = (rf.c || []).map(c => c[0]).filter(id => rf.p[id] != null);
+  cands.map(id => ({id, d: dn(id)})).sort((a, b) => (a.d && b.d ? a.d.n.localeCompare(b.d.n) : 0)).forEach(({id, d}) => { if (rf.p[id] > 0 || id === dec) rows.push({k: id, name: d ? d.name : id, c: d ? d.c : DOOR[7], p: rf.p[id], na: !av.has(id), sel: dec === id}); });
+  if (rf.p.z_empty != null) rows.push({k: 'ABSENT', name: T('门不存在', 'No such opening'), c: UNC, p: rf.p.z_empty, na: false, sel: false, un: true});
+  const pbars = rows.map(r => bar(r.c, r.name, r.p, `${r.na ? 'na' : ''} ${r.sel ? 'sel' : ''} ${dec && !r.sel ? 'dim' : ''} ${r.un ? 'un' : ''}`)).join('');
+  const es = rf.es, er = [];
+  if (es) { if (es.l != null) er.push({name: T('照字面', 'Follow the words'), c: LITC, v: es.l, na: !av.has('LITERAL'), sel: dec === 'LITERAL'});
+    Object.keys(es.s || {}).filter(id => av.has(id) || id === dec || rf.p[id] > 0).forEach(id => { const d = dn(id); er.push({name: d ? d.name : id, c: d ? d.c : DOOR[7], v: es.s[id], na: !av.has(id), sel: dec === id}); });
+    if (es.r != null) er.push({name: T('停下报告', 'Stop and report'), c: UNC, v: es.r, na: false, sel: dec === 'REPORT'}); }
+  const sc = er.length ? `<h4 style="margin-top:12px">${T('决定时三类做法的期望得分', 'Expected score of the three kinds of action at the decision')}</h4><div class="bb-list">${er.map(r => bar(r.c, r.name, (r.v + 1) / 2, `${r.na ? 'na' : ''} ${r.sel ? 'sel' : ''} ${!r.sel ? 'dim' : ''}`, r.v.toFixed(2))).join('')}</div><p class="bcap">${T('条长 = 期望得分（−1 到 +1）；斜线 = 在这个位置执行不了。', 'Bar length = expected score (−1 to +1); hatched = cannot be carried out at this position.')}</p>` : '';
+  return head + `<div class="bb-list">${pbars}</div><p class="bcap">${T('这是评分器里完整 POMDP 在决定时的概率：它知道整张地图和出题时各种意思的比例，但不知道这一题的答案；它一开始就知道整张地图，所以概率在路上通常不变，这里只画决定时的一张。', 'The scorer’s full POMDP at its decision: it knows the whole map and how often each kind of meaning occurs in the test set, but not the answer to this case; it knows the whole map from the start, so its probabilities rarely change on the way, and only the one at the decision is drawn.')}</p>${sc}
+    <p class="note" style="margin-top:8px">${T('参考选的是：', 'The reference chooses: ')}<b>${esc(dec === 'LITERAL' ? T('照字面', 'follow the words') : dec === 'REPORT' ? T('停下报告', 'stop and report') : (dn(dec) ? dn(dec).name : dec))}</b>${T('（它知道整张地图，结论不一定和本方法相同）。', ' (it knows the whole map, so its choice need not equal the method’s).')}</p>`;
 }
 
 /* ---------- mount ---------- */
 function mount(e, hooks) {
   const stage = document.querySelector('.stagecard'); if (!stage || $('#beliefcard')) return;
-  const tip = T('概率怎么来的：本方法先验只看指令说法——纯距离指令“照字面”0.3，带“第 N 个 / 这个”的指令 0.05；每走一步，根据口述距离离哪扇门近、激光看到了什么来更新；到最后做决定时，比较“能执行的程度 × 期望得分”。这些不是固定数值：出题时各种意思的比例只有评分器知道。', 'Where the probabilities come from: the method’s prior only looks at how the instruction is worded — a pure distance instruction gets 0.3 for “follow the words”, one with “the N-th / this” gets 0.05; at every step the probabilities are updated by which opening is closest to the spoken distance and by what the laser sees; at the moment of decision it compares “how executable × expected score”. They are not fixed numbers: how often each kind of meaning occurs in the test set is known only to the scorer.');
-  stage.insertAdjacentHTML('afterend', `<section class="card beliefcard" id="beliefcard"><div class="card-h"><span class="tile">≈</span><h3 title="${esc(tip)}">${T('方法怎么想', 'How the method thinks')} <span class="tipu">?</span></h3><span class="more" id="bmeta"></span></div><div id="bbody"><p class="note" style="padding:6px 16px 14px">…</p></div></section>`);
-  get(e).then(b => {
+  const tip = T('概率是怎么来的：本方法的先验只看指令的说法——纯距离指令“照字面”0.3，带“第 N 个 / 这个”的指令 0.05；每走一步，按口述距离离哪扇门近、看到了哪些门来更新；到最后做决定时，比较“能执行的程度 × 期望得分”。这些不是固定数值：出题时各种意思的比例只有评分器知道，评分器里的完整 POMDP 知道整张地图和这些比例。', 'Where the probabilities come from: the method’s prior only looks at how the instruction is worded — a pure distance instruction gets 0.3 for “follow the words”, one with “the N-th / this” gets 0.05; at every step the probabilities are updated by which opening is closest to the spoken distance and by which openings have been seen; at the final decision it compares “how executable × expected score”. They are not fixed numbers: how often each kind of meaning occurs in the test set is known only to the scorer, whose full POMDP knows the whole map and these frequencies.');
+  stage.insertAdjacentHTML('afterend', `<section class="card beliefcard" id="beliefcard"><div class="card-h"><span class="tile">≈</span><h3 title="${esc(tip)}">${T('方法怎么想', 'How the method thinks')} <span class="tipu">?</span></h3><span class="more" id="barms"></span></div><div id="bbody"><p class="note" style="padding:6px 16px 14px">…</p></div></section>`);
+  let arm = e.s11 ? 'method_R13' : 'method_v6';
+  const render = () => {
     const body = $('#bbody'); if (!body) return;
-    if (!b) { body.innerHTML = `<p class="note" style="padding:6px 16px 14px"><span class="nexp">${T('待导出', 'to be exported')}</span> ${T('这一题的在线概率还没有导出（本方法的在线概率由运行方导出，参考概率由评分方导出）。', 'The online probabilities of this case are not exported yet (the run team exports the method’s online probabilities, the scoring team the reference probabilities).')}</p>`; return; }
-    const nm = names(b);
-    $('#bmeta').textContent = e.s11 ? T('本方法', 'our method') : T('上一版 v6.11', 'previous version v6.11');
-    body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${e.s11 ? T('本方法（边走边算）', 'Our method (updated while driving)') : T('这个方法（边走边算）', 'This method (updated while driving)')}</h4><div class="bb-list" id="bbars"></div>${chartSVG(b, nm)}<div id="bscores"></div><p class="note" id="bwhy"></p></div>
-      <div class="bcol" id="bref">${refHTML(undefined)}</div></div>
-      <p class="note" style="padding:0 16px 12px">${T('小方块：能 = 这个做法在这里可以执行；不能 = 执行不了，条变灰。', 'Marker: can = this action can be carried out here; cannot = it cannot, and the bar turns grey.')}</p>`;
-    // overlay: doors on the map, same colours
-    const ops = b.h.filter(h => h !== LIT && h !== UNRES);
-    e.m._overs = e.m._overs || {};
-    e.m._overs.belief = (g, F) => { g.save(); ops.forEach((id, i) => { const q = b.geo[id]; if (!q) return; const [gx, gy, side, w] = q, c = nm[id][1], dep = 1.6 * (side || -1);
-      g.fillStyle = c + '38'; g.strokeStyle = c; g.lineWidth = 2; const x0 = F.X(gx - w / 2), x1 = F.X(gx + w / 2), y0 = F.Y(gy), y1 = F.Y(gy + dep); g.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0)); g.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
-      g.fillStyle = c; g.font = '700 12px ui-monospace,Menlo,monospace'; g.fillText(nm[id][0].replace(/^.* /, ''), (x0 + x1) / 2 - 4, (y0 + y1) / 2 + 4); }); g.restore(); };
-    hooks.paint();
-    // the decision
-    const d = b.d, sc = $('#bscores');
-    if (d) { const rows = b.h.filter(h => h !== UNRES).map(h => { const has = d.sc[h] != null, av = d.av[h] != null; return {h, v: d.sc[h], av, has, best: h === d.id}; });
-      sc.innerHTML = `<h4 style="margin-top:12px">${T('决定时各做法的期望得分', 'Expected score of each action at the decision')} <span class="u">${T('（前进 ', '(at ')}${d.p.toFixed(1)} m${T('）', ')')}</span></h4><div class="bb-list">${rows.map(r => `<div class="bb ${r.best ? 'best' : ''} ${r.av ? '' : 'off'}" style="--c:${nm[r.h][1]}"><span class="sw"></span><span class="nm">${esc(nm[r.h][0])}</span><span class="v">${r.has ? r.v.toFixed(2) : '—'}</span><span class="ex">${r.av ? (r.best ? '✓ ' + T('选中', 'chosen') : '') : T('不能执行', 'cannot be done')}</span></div>`).join('')}</div>`; }
-    $('#bwhy').textContent = why(b, nm);
-    const bars = $('#bbars');
-    bars.innerHTML = b.h.map((h, i) => `<div class="bb" data-i="${i}" style="--c:${nm[h][1]}"><span class="sw"></span><span class="nm">${esc(nm[h][0])}</span><span class="bar"><i></i></span><b></b><span class="ex"></span></div>`).join('');
-    const rowsEl = [...bars.children];
-    e._bu = t => { let k = 0; for (let i = 0; i < b.c.length; i++) if (b.c[i][0] <= t + 1e-6) k = i; const row = b.c[k], x = $('#bnow');
-      rowsEl.forEach((el, i) => { const p = row[2][i], f = row[3][i]; el.querySelector('i').style.width = (p * 100).toFixed(1) + '%'; el.querySelector('b').textContent = pct(p); const ex = el.querySelector('.ex'); ex.textContent = b.h[i] === UNRES ? '' : EXN[f] === undefined ? '' : (f === 2 ? '' : T(EXN[f], f ? 'can' : 'cannot')); el.classList.toggle('off', f === 0); });
-      if (x) { const maxP = Math.max(1, ...b.c.map(r => r[1]), b.d ? b.d.p : 0) * 1.02; const xx = 30 + row[1] / maxP * (360 - 30 - 74); x.setAttribute('x1', xx); x.setAttribute('x2', xx); }
-      const wy = $('#bwhy'); if (wy) wy.style.opacity = d && t < d.t ? .45 : 1; };
-    e._bu(hooks.getT());
-  });
+    Promise.all([getOnline(e.id, arm), getRef(e.id)]).then(([on, rf]) => { if (!$('#bbody')) return;
+      const DS = buildDoors(e, on && on.t && on.t.length ? on : null, rf);
+      const armsHTML = X.dev && armsOf(e).length > 1 ? armsOf(e).map(a => `<a class="${a === arm ? 'on' : ''}" data-arm="${a}">${armLabel(a)}</a>`).join('') : '';
+      $('#barms').innerHTML = armsHTML ? `<nav class="atoc s10nav" style="margin:0">${armsHTML}</nav>` : (e.s11 ? T('本方法', 'our method') : armLabel(arm));
+      document.querySelectorAll('#barms [data-arm]').forEach(a => a.onclick = () => { arm = a.dataset.arm; render(); });
+      // doors on the map
+      e.m._overs = e.m._overs || {};
+      e.m._overs.belief = (g, F) => { g.save(); DS.doors.forEach(d => { if (d.x == null) return; const c = d.c, dep = 1.6 * (d.side === 'left' || d.side === 1 ? 1 : -1), w = d.w || 1, x0 = F.X(d.x - w / 2), x1 = F.X(d.x + w / 2), y0 = F.Y(d.y), y1 = F.Y(d.y + dep);
+        g.fillStyle = c + '38'; g.strokeStyle = c; g.lineWidth = 2; g.fillRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0)); g.strokeRect(Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+        g.fillStyle = c; g.font = '700 12px ui-monospace,Menlo,monospace'; g.fillText(d.n || '?', (x0 + x1) / 2 - 4, (y0 + y1) / 2 + 4); }); g.restore(); };
+      hooks.paint();
+      const right = `<div class="bcol" id="bref">${refHTML(e, rf, DS)}</div>`;
+      if (isObstacle(e.id)) { body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法（边走边算）', 'Our method (updated while driving)')}</h4><p class="note">${T('绕障题的概率还没有导出（导出只含五个基础测试集）。', 'Probabilities of the detour cases are not exported (the export covers the five base test sets only).')}</p></div>${right}</div>`; e._bu = null; return; }
+      if (!on) { body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法（边走边算）', 'Our method (updated while driving)')}</h4><p class="note">${T('这一题没有导出概率。', 'No probabilities were exported for this case.')}</p></div>${right}</div>`; e._bu = null; return; }
+      if (!on.t.length) { body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法', 'Our method')}</h4><p class="note">${T('这类指令直接照字面执行，没有概率。', 'This kind of instruction is carried out literally, so there are no probabilities.')}</p></div>${right}</div>`; e._bu = null; return; }
+      const names = {}; on.h.forEach((h, i) => { names[i] = h[1] === 'literal' ? [T('照字面', 'Follow the words'), LITC] : h[1] === 'unseen' ? [T('还没看到的门', 'Not seen yet'), UNC] : (DS.byOn[i] ? [DS.byOn[i].name, DS.byOn[i].c] : [T('门 ?', 'Opening ?'), DOOR[7]]); });
+      const noScore = arm === 'method_v4';
+      const unnorm = on.t.some(r => { const s = r[2].reduce((a, v) => a + (v || 0), 0); return Math.abs(s - 1) > 0.02; });
+      body.innerHTML = `<div class="bgrid"><div class="bcol"><h4>${T('本方法边走边算的', 'What the method computes while driving')}</h4><div class="bb-list" id="bbars"></div>
+        <p class="bcap">${T('每一行是一种可能：条长 = 这一刻本方法认为它的概率，随轨迹播放更新；暂停时是当前时刻，播到最后是决定那一刻；斜线 = 在这里执行不了。', 'Each row is one possibility: bar length = the probability the method gives it at this moment, updated with the replay (the current moment when paused, the moment of decision at the end); hatched = cannot be carried out here.')}</p>
+        ${unnorm ? `<p class="note">${T('原始权重未归一，如实显示。', 'The original weights are not normalised; shown as they are.')}</p>` : ''}
+        ${chart(on, DS, names)}<p class="bcap">${T('折线 = 各种可能的概率随前进距离的变化（只有记录到变化的位置才有点）；竖线 = 做决定的位置，橙色线 = 现在播放到的位置。', 'Lines = the probabilities against distance driven (points only where a change was logged); dashed vertical = where it decided, orange line = the current replay position.')}</p>
+        <div id="bscores"></div></div>${right}</div><p class="bwhy" id="bwhy"></p>`;
+      const d = on.d, iLit = on.h.findIndex(h => h[1] === 'literal');
+      // expected scores at the decision
+      const sc = $('#bscores');
+      if (d && !noScore) { let pt = on.t[0]; for (const q of on.t) if (q[0] <= d[0] + 1e-6) pt = q;
+        const rows = on.h.map((h, i) => ({i, h})).filter(o => o.h[1] !== 'unseen' && pt[2][o.i] != null && pt[4][o.i] != null).map(o => ({n: names[o.i][0], c: names[o.i][1], v: pt[4][o.i], na: pt[3][o.i] === 0, sel: d[3] === o.i}));
+        sc.innerHTML = `<h4 style="margin-top:12px">${T('决定时各做法的期望得分', 'Expected score of each action at the decision')}</h4><div class="bb-list">${rows.map(r => bar(r.c, r.n, r.v == null ? 0 : (r.v + 1) / 2, `${r.na ? 'na' : ''} ${r.sel ? 'sel' : ''} ${r.sel ? '' : 'dim'}`, r.v == null ? T('无', 'n/a') : r.v.toFixed(2))).join('')}</div><p class="bcap">${T('条长 = 期望得分（−1 到 +1）；只列出当时打了分的做法（执行不了的做法没有分）；实色 = 选中的做法。', 'Bar length = expected score (−1 to +1); only actions that were scored then are listed (actions that cannot be carried out get no score); solid = the chosen action.')}</p>`; }
+      else if (noScore) sc.innerHTML = `<p class="note">${T('原诊断未记录这个方法的执行程度和期望得分。', 'The original diagnostics did not record executability and expected scores for this method.')}</p>`;
+      $('#bwhy').textContent = noScore || !d ? (d ? '' : why(on, DS, names)) : why(on, DS, names);
+      if (noScore && d) $('#bwhy').textContent = T('原诊断没有记录这个方法比较期望得分的过程，所以不生成解释。', 'The original diagnostics do not record how this method compared expected scores, so no explanation is generated.');
+      // live update
+      const bars = $('#bbars'), hasChosen = d && d[3] != null;
+      e._bu = t => { const tt = d ? Math.min(t, d[0]) : t; let k = 0; for (let i = 0; i < on.t.length; i++) if (on.t[i][0] <= tt + 1e-6) k = i; const pt = on.t[k];
+        const rows = leftRows(on, DS, pt), atD = d && t >= d[0] - 1e-6;
+        bars.innerHTML = rows.map(r => bar(r.c, r.name, r.p, `${r.na ? 'na' : ''} ${r.kind === 'un' ? 'un' : ''} ${atD && r.i === d[3] ? 'sel' : ''} ${atD && r.i !== d[3] ? 'dim' : ''}`)).join('');
+        const nowEl = $('#bnow'); if (nowEl) { const maxP = Math.max(1, ...on.t.map(r => r[1]), d ? d[1] : 0) * 1.03; const xx = 30 + pt[1] / maxP * (360 - 30 - 92); nowEl.setAttribute('x1', xx); nowEl.setAttribute('x2', xx); } };
+      e._bu(hooks.getT());
+    });
+  };
+  index().then(render);
 }
-function onAnswer(e, rec) { const r = $('#bref'); if (r) r.innerHTML = refHTML(rec === null ? undefined : rec); }
-window.SLX.belief = {mount, onAnswer};
+window.SLX.belief = {mount, onAnswer: () => {}};
 })();

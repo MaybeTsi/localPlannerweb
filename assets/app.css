@@ -821,3 +821,17 @@ table.rrt .u.unk{color:var(--ink3);font-size:10.5px;white-space:normal;max-width
 .bb-list .bb:has(.v){grid-template-columns:12px minmax(64px,92px) 1fr 44px 80px}
 .bchart{width:100%;height:auto;margin-top:10px;display:block}
 @media (max-width:860px){.bgrid{grid-template-columns:minmax(0,1fr)}}
+
+/* belief panel v2: horizontal bars, value at the end of the bar */
+.beliefcard .bb{display:grid;grid-template-columns:minmax(78px,112px) 1fr;gap:8px;align-items:center;font-size:12.5px}
+.beliefcard .bb .nm{white-space:nowrap;color:var(--ink)}
+.beliefcard .bb .btrk{display:flex;align-items:center;gap:6px;min-height:16px}
+.beliefcard .bb .btrk i{display:block;height:13px;border-radius:4px;background:var(--c);flex:none;transition:width .12s linear;min-width:2px}
+.beliefcard .bb .btrk b{font:600 12px var(--mono);color:var(--ink);text-align:left}
+.beliefcard .bb.un .track i{background:var(--c);opacity:.6}
+.beliefcard .bb.na .track i{background:repeating-linear-gradient(135deg,var(--c) 0 3px,transparent 3px 7px);border:1px solid var(--c);opacity:.9}
+.beliefcard .bb.dim .track i{opacity:.4}
+.beliefcard .bb.sel .nm{font-weight:700}.beliefcard .bb.sel .track i{opacity:1;box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 28%,transparent)}
+.beliefcard .bcap{margin:6px 0 0;font-size:11.5px;color:var(--ink3);line-height:1.45}
+.beliefcard .bwhy{margin:4px 16px 14px;padding:10px 14px;border-radius:10px;background:var(--or2);font-size:14px;line-height:1.55;color:var(--ink)}
+.beliefcard .bgrid{padding-bottom:4px}

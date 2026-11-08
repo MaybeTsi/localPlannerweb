@@ -1,101 +1,110 @@
 #!/usr/bin/env python3
-"""Online belief of the method per case, for the "how the method thinks" panel on the case page.
+"""Probabilities for the "how the method thinks" panel.
 
-Until the designated exports exist (C: research/method_v6_20261105/v612/online_belief_export/ = CP-C-B; B: research/public_answers_20261107/reference_belief/ = CP-B-RB)
-this reads what C already keeps for every run: the per-cycle diagnostic log named by each raw capture (`diagnostic_log_path`):
-posterior over {follow the words, each opening seen so far, not seen yet}, whether each action could be carried out, the expected scores
-at the decision and the decision itself. Reads only through git objects (read-only).
+Reads (never writes) through git objects:
+  C  codex/junction-decision-20261028 @ --c-ref (default 22be5a8c105)  research/method_v6_20261105/v612/online_belief_export/<dataset>.jsonl  (CP-C-B)
+       one row per case and arm: hypotheses, trace (t, progress_m, pose_xy, posterior, admitted, expected_score, action, slow), decision, id_map
+       S11 five base sets x {method_R13, method_v6}, S10 main set x {method_v6, method_v4}
+  B  codex/kappa-facts-20261028 @ --b-ref (default a6b41931fb7)  research/public_answers_20261107/reference_belief/<dataset>.reference_belief.jsonl  (CP-B-RB)
+       the scorer's full POMDP: posterior at the decision, expected scores, available actions, decision, candidate catalogue
 
-Usage: build_belief.py [case_id:arm ...]   (default: the three first cases)
-Writes data/belief/<safe id>__<arm>.js  SL_BELIEF(key, {...})   and data/belief/index.js  SL_BELIEF_INDEX({caseId: [arm...]})
+Writes
+  data/belief/<dataset>__<arm>__<k>.js   SL_BELIEF(name, {caseId: record})   k = crc32(caseId) % chunks
+  data/belief/ref/<dataset>__<k>.js      SL_BELIEF_REF(name, {caseId: record})
+  data/belief/index.js                   SL_BELIEF_INDEX({commit_c, commit_b, chunks: {...}, ref_chunks: {...}, arms: {dataset: [arm...]}})
+Nothing is computed here except rounding and re-indexing; probabilities are copied as exported (not normalised).
 """
-import csv, gzip, io, json, os, sys
+import argparse, json, math, os, sys, time, zlib
 HERE = os.path.dirname(os.path.abspath(__file__)); WEB = os.path.dirname(HERE); REPO = os.path.abspath(os.path.join(WEB, '..', '..', '..'))
 import importlib.util
 _s = importlib.util.spec_from_file_location('bd', os.path.join(HERE, 'build_data.py')); bd = importlib.util.module_from_spec(_s); _s.loader.exec_module(bd)
-BS11, BS10, C = '5248ac7ef23', 'e926eea6', 'origin/codex/junction-decision-20261028'
-S10DIR = {'S10_MAIN_SYNTH': 'C_05f75b4cd8d5_FIRST6_COMPLETE_S10_MAIN_SYNTH'}
-DEFAULT = ['S11_MAIN_SYNTH:06:0049:method_R13', 'S11_MAIN_SYNTH:01:0026:method_R13', 'S10_MAIN_SYNTH:06:0003:method_v6']
-UNRES = 'UNRESOLVED_BEYOND_OBSERVED_MAP'
+ON = 'research/method_v6_20261105/v612/online_belief_export'
+RF = 'research/public_answers_20261107/reference_belief'
+DATASETS = ['S11_MAIN_SYNTH', 'S11_CLUTTER', 'S11_DIVERSITY_F1', 'S11_DIVERSITY_F2', 'S11_REAL', 'S10_MAIN_SYNTH']
+PER = 40
 
 
 def r4(v):
-    return round(v, 4) if isinstance(v, float) else v
+    return None if v is None else round(v, 4)
 
 
-def source_path(g, ds, cid, arm, cache={}):
-    if ds.startswith('S11'):
-        key = (BS11, ds)
-        if key not in cache:
-            cache[key] = {(s['case_id'], s['arm']): s for s in g.jsonl(BS11, f'research/s11_20261106/formal_scores/{ds}_SCORES.jsonl')}
-    else:
-        key = (BS10, ds)
-        if key not in cache:
-            cache[key] = {(s['case_id'], s['arm']): s for s in g.jsonl(BS10, f'research/s10_20261105/formal_scores/{S10DIR[ds]}/SCORES_V3.jsonl')}
-    return cache[key][(cid, arm)]['source_path']
+def online(r):
+    hyp = r['hypotheses']; ids = [h['id'] for h in hyp]; ix = {h: i for i, h in enumerate(ids)}
+    def arr(d, n=len(ids)):
+        out = [None] * n
+        for k, v in (d or {}).items():
+            if k in ix and v is not None:
+                out[ix[k]] = r4(v)
+        return out
+    tr = [[r4(p['t']), r4(p['progress_m']), arr(p['posterior']), arr(p['admitted']), arr(p['expected_score']), p['action'], 1 if p.get('slow') else 0] for p in r['trace']]
+    d = r['decision'] or {}
+    out = {'h': [[h['id'], h['kind'], r4(h['center_xy'][0]) if h.get('center_xy') else None, r4(h['center_xy'][1]) if h.get('center_xy') else None, h.get('side'), r4(h.get('first_seen_t'))] for h in hyp],
+           't': tr, 'd': [r4(d.get('t')), r4(d.get('progress_m')), d.get('action'), ix.get(d.get('chosen_id'))] if d.get('action') else None,
+           'm': {str(ix[k]): v['candidate_k'] for k, v in (r.get('id_map') or {}).items() if k in ix and v.get('status') == 'MATCHED'}}
+    cov = r.get('coverage') or {}
+    if not tr:
+        out['e'] = cov.get('empty_reason') or 'EMPTY'
+    flags = [k for k in ('weights_not_normalized', 'unnormalized_posterior', 'posterior_weights_not_normalized') if cov.get(k)]
+    if flags:
+        out['u'] = 1
+    return out
 
 
-def extract(d):
-    cyc = d['cycles']
-    ids, geo = [], {}
-    for c in cyc:
-        for x in c['candidates']:
-            if x['id'] not in ids:
-                ids.append(x['id'])
-            if x.get('kind') == 'opening' and x.get('goal'):
-                gt = x.get('gate') or {}
-                geo[x['id']] = [r4(x['goal'][0]), r4(x['goal'][1]), x.get('side'), r4(gt.get('width') or 1.0)]
-        for k in c['posterior']:
-            if k not in ids and k != UNRES:
-                ids.append(k)
-    lit = [i for i in ids if i == 'Z0_LITERAL' or i.startswith('Z0')]
-    ops = sorted([i for i in ids if i in geo], key=lambda i: geo[i][0])
-    hyp = lit + ops + [UNRES]
-    first_dec = next((i for i, c in enumerate(cyc) if c['action'] != 'CONTINUE'), None)
-    last = (first_dec + 1) if first_dec is not None else len(cyc)
-    rows = []
-    for c in cyc[:last]:
-        post = c['posterior']
-        adm = {}
-        for x in c['candidates']:
-            ee = x.get('execution_evidence') or {}
-            adm[x['id']] = 1 if ee.get('admitted') else 0
-        rows.append([r4(c['t']), r4(c.get('progress_m') or 0.0), [r4(post.get(h, 0.0)) for h in hyp], [adm.get(h, 2) if h != UNRES else 2 for h in hyp]])
-    dec = None
-    if first_dec is not None:
-        c = cyc[first_dec]
-        ch = c.get('chosen') or {}
-        dec = {'i': first_dec, 'a': c['action'], 'why': c.get('reason'), 't': r4(c['t']), 'p': r4(c.get('progress_m') or 0.0), 'id': ch.get('id') if c['action'] == 'COMMIT' else ('Z0_LITERAL' if c['action'] == 'KEEP_LITERAL' else None),
-               'sc': {k: r4(v) for k, v in (c.get('expected_score_table') or {}).items()}, 'av': {k: r4(v) for k, v in (c.get('available_expected_scores') or {}).items()},
-               'dl': r4(c.get('decision_deadline_m')) if c.get('decision_deadline_m') is not None else None}
-    return {'h': hyp, 'geo': geo, 'c': rows, 'd': dec, 'pi0': ((cyc[0].get('v5') or {}).get('pi0'))}
+def reference(r):
+    q = r['reference']
+    cand = [[c['id'], r4(c['center_xy'][0]), r4(c['center_xy'][1]), c.get('side'), r4(c.get('width_m')), 1 if c.get('positive_posterior_support') else 0] for c in (q.get('candidates') or []) if c.get('in_posterior_dictionary')]
+    es = q.get('expected_scores')
+    es = es if isinstance(es, dict) else None
+    return {'st': q.get('status'), 'p': {k: r4(v) for k, v in (q.get('posterior_at_decision') or {}).items()} if isinstance(q.get('posterior_at_decision'), dict) else None,
+            'es': ({'l': r4(es.get('literal')), 'r': r4(es.get('report')), 's': {k: r4(v) for k, v in (es.get('structures') or {}).items()}} if es and not isinstance(es.get('structures'), str) else None),
+            'av': (q.get('available_actions_at_source_node') or (q.get('posterior_trace') or [{}])[0].get('available_actions_at_source_node')) if isinstance(q.get('posterior_trace'), list) and q['posterior_trace'] else q.get('available_actions_at_source_node'),
+            'd': q.get('decision'), 'c': cand}
+
+
+def dump(path, fn, name, obj):
+    open(path, 'w').write(f'{fn}({json.dumps(name)},' + json.dumps(obj, ensure_ascii=False, separators=(',', ':')) + ');\n')
 
 
 def main():
-    cases = sys.argv[1:] or DEFAULT
-    g = bd.Git(REPO)
-    base = os.path.join(WEB, 'data', 'belief'); os.makedirs(base, exist_ok=True)
-    idxp = os.path.join(base, 'index.js')
-    index = {}
-    if os.path.exists(idxp):
-        t = open(idxp).read(); index = json.loads(t[t.index('(') + 1:t.rindex(')')])
-    for spec in cases:
-        cid, arm = spec.rsplit(':', 1)
-        import re
-        m = re.search(r':O([134]):(BLOCK|CLEAR)$', cid)
-        ds = f'S11_OBS_O{m.group(1)}_{m.group(2)}' if m else cid.split(':')[0]
-        sp = source_path(g, ds, cid, arm)
-        raw = json.loads(gzip.decompress(g.read(C, sp)))
-        diag = json.loads(gzip.decompress(g.read(C, raw['diagnostic_log_path'])))
-        out = extract(diag)
-        out['arm'] = arm
-        safe = cid.replace(':', '_') + '__' + arm
-        open(os.path.join(base, safe + '.js'), 'w').write(f'SL_BELIEF({json.dumps(safe)},' + json.dumps(out, separators=(',', ':')) + ');\n')
-        index.setdefault(cid, [])
-        if arm not in index[cid]:
-            index[cid].append(arm)
-        print(spec, 'cycles', len(out['c']), 'hyp', out['h'], 'decision', out['d'] and (out['d']['a'], out['d']['id'], out['d']['p']))
-    open(idxp, 'w').write('SL_BELIEF_INDEX(' + json.dumps(index, separators=(',', ':')) + ');\n')
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--c-ref', default='22be5a8c105'); ap.add_argument('--b-ref', default='a6b41931fb7')
+    ap.add_argument('--arms', default='all', help='all, or comma list e.g. method_R13,method_v6')
+    args = ap.parse_args()
+    g = bd.Git(REPO); cc = g.commit(args.c_ref); bc = g.commit(args.b_ref)
+    base = os.path.join(WEB, 'data', 'belief'); os.makedirs(os.path.join(base, 'ref'), exist_ok=True)
+    for sub in (base, os.path.join(base, 'ref')):
+        for f in os.listdir(sub):
+            if f.endswith('.js'):
+                os.remove(os.path.join(sub, f))
+    index = {'commit_c': cc, 'commit_b': bc, 'chunks': {}, 'ref_chunks': {}, 'arms': {}}
+    want = None if args.arms == 'all' else set(args.arms.split(','))
+    t0 = time.time()
+    for ds in DATASETS:
+        rows = g.jsonl(args.c_ref, f'{ON}/{ds}.jsonl')
+        by_arm = {}
+        for r in rows:
+            if want and r['arm'] not in want:
+                continue
+            by_arm.setdefault(r['arm'], {})[r['case_id']] = online(r)
+        for arm, cs in by_arm.items():
+            n = max(1, math.ceil(len(cs) / PER)); ch = {}
+            for cid, rec in cs.items():
+                ch.setdefault(zlib.crc32(cid.encode()) % n, {})[cid] = rec
+            for k, obj in ch.items():
+                dump(os.path.join(base, f'{ds}__{arm}__{k}.js'), 'SL_BELIEF', f'{ds}__{arm}__{k}', obj)
+            index['chunks'][f'{ds}__{arm}'] = n
+            index['arms'].setdefault(ds, []).append(arm)
+        refs = {r['case_id']: reference(r) for r in g.jsonl(args.b_ref, f'{RF}/{ds}.reference_belief.jsonl')}
+        n = max(1, math.ceil(len(refs) / PER)); ch = {}
+        for cid, rec in refs.items():
+            ch.setdefault(zlib.crc32(cid.encode()) % n, {})[cid] = rec
+        for k, obj in ch.items():
+            dump(os.path.join(base, 'ref', f'{ds}__{k}.js'), 'SL_BELIEF_REF', f'{ds}__{k}', obj)
+        index['ref_chunks'][ds] = n
+        print(f'{ds}: online arms {list(by_arm)} cases {len(refs)} {time.time() - t0:.0f}s', flush=True)
+    open(os.path.join(base, 'index.js'), 'w').write('SL_BELIEF_INDEX(' + json.dumps(index, separators=(',', ':')) + ');\n')
+    size = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(base) for f in fs)
+    print(f'done: data/belief {size / 1e6:.1f} MB')
 
 
 if __name__ == '__main__':

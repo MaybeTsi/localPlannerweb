@@ -261,7 +261,7 @@ function drawMap(cv, e, det, o) {
     if (last && (tm != null || !small) && !(small && o.alpha)) { car(g, X, Y, s, last, e, col); if (o.pen) { g.fillStyle = col; g.beginPath(); g.arc(X(last[1]), Y(last[2]), 3.2, 0, 7); g.fill(); } } }
   if (tm == null || small) { const st = e.m.s || [0, 0, 0]; car(g, X, Y, s, [0, st[0], st[1], st[2]], e, MAP.ink, .5); }
   if (ans && o.reticle != null && o.reticle >= 0 && !(ans.target && ans.target.kind === 'direction')) reticle(g, X, Y, e, ans, o.reticle, W, H);
-  if (!small && e.m._overs) for (const k in e.m._overs) if (e.m._overs[k]) e.m._overs[k](g, F);
+  if (!small && e.m._overs) for (const k in e.m._overs) if (e.m._overs[k]) e.m._overs[k](g, F, o);
   return F;
 }
 /* building doors carry long ids (office_y14_pos716_731): number them along the list instead, full id in the side panel */
@@ -382,10 +382,10 @@ function digitRoll(el, value, delay = 0) { const s = fmt(value); el.innerHTML = 
   requestAnimationFrame(() => requestAnimationFrame(() => cols.forEach(c => c.style.transform = `translateY(${-(10 + +c.dataset.d)}em)`))); }
 
 /* ---------------- routes ---------------- */
-function route() { const h = decodeURIComponent(location.hash.replace(/^#/, '')); if (h.startsWith('case/')) return {name: 'case', id: h.slice(5)}; if (h === 'overview') return {name: 'overview'}; if (h === 'glossary') return {name: 'glossary'}; if (h === 'analysis' || h.startsWith('analysis/')) return {name: 'analysis', id: h.slice(9)}; return {name: h === 'list' || h.startsWith('list') ? 'list' : (DEV ? 'list' : 'home'), id: ''}; }
+function route() { const h = decodeURIComponent(location.hash.replace(/^#/, '')); if (h.startsWith('case/')) return {name: 'case', id: h.slice(5)}; if (h === 'overview') return {name: 'overview'}; if (h === 'glossary') return {name: 'glossary'}; if (h === 'rescore') return {name: 'rescore'}; if (h === 'analysis' || h.startsWith('analysis/')) return {name: 'analysis', id: h.slice(9)}; return {name: h === 'list' || h.startsWith('list') ? 'list' : (DEV ? 'list' : 'home'), id: ''}; }
 let cleanup = [];
 function render() { cleanup.forEach(f => f()); cleanup = []; const r = route(); state.pend = r.id; rail(r.name); document.title = L === 'zh' ? '测试场景库' : 'Scenario Library';
-  if (r.name === 'case') renderCase(r.id); else if (r.name === 'overview') renderOverview(); else if (r.name === 'home') renderHome(); else if (r.name === 'glossary') renderGlossary(); else if (r.name === 'analysis') renderAnalysis(r.id); else renderList();
+  if (r.name === 'case') renderCase(r.id); else if (r.name === 'overview') renderOverview(); else if (r.name === 'home') renderHome(); else if (r.name === 'glossary') renderGlossary(); else if (r.name === 'rescore') { if (window.SLX.rescore) window.SLX.rescore.page(); else $('#page').innerHTML = '<p class="note" style="padding:40px 0">…</p>'; } else if (r.name === 'analysis') renderAnalysis(r.id); else renderList();
   if (NAV === 'dock') { const sets = setsDef(); let d = $('#dock'); if (!d) { d = document.createElement('nav'); d.id = 'dock'; document.body.appendChild(d); }
     const cur = r.name === 'overview' || r.name === 'analysis' || r.name === 'home' ? null : state.set;
     d.innerHTML = `<a class="it ${r.name === 'home' ? 'on' : ''}" href="#home" style="--i:0"><b><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5 8 3l5.5 4.5V13H2.5z"/></svg></b><span>${L === 'zh' ? '总览' : 'Summary'}</span></a>${sets.filter(x => NEW_SETS.includes(x.id)).map((x, i) => `<button class="it ${cur === x.id ? 'on' : ''}" style="--i:${i}" data-set="${x.id}" title="${esc(x.sub)}"><b>${x.ico}</b><span>${esc(x.label)}</span><sup>${fmt(x.n)}</sup></button>`).join('')}<label class="it oldsel ${cur && !NEW_SETS.includes(cur) ? 'on' : ''}"><select id="oldSets" aria-label="${L === 'zh' ? '早期测试集' : 'Earlier test sets'}"><option value="">${L === 'zh' ? '早期测试集…' : 'Earlier test sets…'}</option>${sets.filter(x => !NEW_SETS.includes(x.id)).map(x => `<option value="${x.id}" ${cur === x.id ? 'selected' : ''}>${esc(x.label)}${S10_SETS.includes(x.id) ? (L === 'zh' ? ' · 上一版 v6.11 的完整测试记录（本方法调试用）' : ' · previous version v6.11, full test record (used to tune our method)') : MAIN_SETS.includes(x.id) ? (L === 'zh' ? ' · 更早的 v4' : ' · earlier v4') : ''} · ${fmt(x.n)}</option>`).join('')}</select></label><i class="dsep it"></i><a class="it ${r.name === 'overview' ? 'on' : ''}" href="#overview"><b><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 13.5V9M8 13.5V3.5M13 13.5V7"/></svg></b><span>${t('overview')}</span></a><a class="it ${r.name === 'analysis' ? 'on' : ''}" href="#analysis"><b><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 13.5h11M4 11l3-3.5 2.5 2L13 5"/><circle cx="13" cy="5" r="1"/></svg></b><span>${L === 'zh' ? '分析' : 'Analysis'}</span></a>
@@ -726,6 +726,7 @@ function mountCase(e, det) {
   document.querySelectorAll('#side .armrow[data-a]').forEach(b => b.onclick = () => { const a = b.dataset.a; state.on[a] = !state.on[a]; b.classList.toggle('off', !state.on[a]); if (state.view === 'overlay') paint(); else buildStage(); });
   if (e.s10 && window.SLX.ans) window.SLX.ans.mount(e, {paint});
   if (e.s10 && window.SLX.belief) window.SLX.belief.mount(e, {paint, getT: () => tnow});
+  if (e.s10 && window.SLX.rescore) window.SLX.rescore.mount(e, {paint});
   buildStage(); const onR = () => buildStage(); window.addEventListener('resize', onR); cleanup.push(() => window.removeEventListener('resize', onR));
   if (state.answer && e.ans) { retK = 0; ret(); }
 }

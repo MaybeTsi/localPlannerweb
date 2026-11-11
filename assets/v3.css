@@ -1,0 +1,146 @@
+/* v3 skin "glass & pixel" — loaded by index_v3.html only (html.v2.v3). It reuses the structure v2.js builds (replay, method tiles, lanes)
+   and changes the look: the whole page takes the two states of the theme switch — night: blue-black glass with a cool light strip;
+   day: warm grey glass with an amber strip. Headline numbers are drawn as a dot matrix (v3.js). Scoped to html.v3. */
+html.v3[data-theme="dark"]{
+  --sand1:#0B0C12;--sand2:#10121A;--sand3:#171A25;--sand4:#1D2130;--sand5:#252A3B;--sand6:#2E3449;--sand7:#3A4160;--sand8:#515A7E;--sand9:#6F7899;--sand11:#B1B8D3;--sand12:#EEF0FA;
+  --bg:#090A10;--canvas:#090A10;--surface:#12141D;--line:rgba(255,255,255,.09);--line2:rgba(255,255,255,.15);
+  --amb:#8A9BFF;--amb2:#B9C4FF;--amb-soft:rgba(138,155,255,.20);--amb-ink:#B9C4FF;
+  --glass:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.028));--glass-line:rgba(255,255,255,.10);--glass-hi:rgba(255,255,255,.10);
+  --card-shadow:inset 0 1px 0 var(--glass-hi),0 24px 60px -30px #000;--card-shadow-hi:inset 0 1px 0 var(--glass-hi),0 40px 90px -36px #000;
+  --map-unk:#0D0F17;--map-free:#171A27;--map-wall:#9EA7CC;--map-grid:rgba(255,255,255,.05);--map-hud:#6F7899;--map-ink:#EEF0FA;
+  --dot:rgba(255,255,255,.055);--arm-v16:#7A66E8;
+}
+html.v3[data-theme="light"]{
+  --sand2:#F1EEEA;--sand3:#E7E3DC;--sand4:#DED9D1;--sand5:#D6D1C8;--sand6:#CBC5BA;
+  --bg:#EAE7E2;--canvas:#EAE7E2;--surface:#FBFAF8;--line:rgba(70,58,36,.13);--line2:rgba(70,58,36,.22);
+  --amb:#FF9A1F;--amb2:#FFC463;--amb-soft:rgba(255,154,31,.26);--amb-ink:#B75C00;
+  --glass:linear-gradient(180deg,rgba(255,255,255,.82),rgba(255,255,255,.56));--glass-line:rgba(255,255,255,.9);--glass-hi:rgba(255,255,255,.95);
+  --card-shadow:inset 0 1px 0 var(--glass-hi),0 1px 2px rgba(70,58,36,.08),0 24px 50px -28px rgba(70,58,36,.38);--card-shadow-hi:inset 0 1px 0 var(--glass-hi),0 2px 4px rgba(70,58,36,.08),0 40px 80px -34px rgba(70,58,36,.5);
+  --map-unk:#F3F0EB;--map-free:#FFFFFF;--dot:rgba(70,58,36,.10);
+}
+
+/* ---------- ambient background, no framed sheet ---------- */
+html.v3:not([data-nav="rail"]) .main{background:
+  radial-gradient(58% 46% at 84% -6%,var(--amb-soft),transparent 62%),
+  radial-gradient(42% 40% at -4% 58%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 64%),
+  radial-gradient(50% 40% at 60% 108%,color-mix(in srgb,var(--amb) 10%,transparent),transparent 62%),
+  radial-gradient(circle,var(--dot) 1px,transparent 1.3px) 0 0/24px 24px,var(--bg);background-attachment:fixed,fixed,fixed,scroll,scroll}
+html.v3:not([data-nav="rail"]) .page{background:none;border:0;box-shadow:none;padding-top:20px}
+html.v3:not([data-nav="rail"]) .page::before,html.v3:not([data-nav="rail"]) .page::after{display:none}
+
+/* ---------- floating glass top bar ---------- */
+html.v3 .top,html.v3:not([data-nav="rail"]) .top{top:10px;margin:10px auto 0;width:min(calc(var(--sheet) - 40px),calc(100% - 24px));height:56px;padding:0 12px 0 16px;border-radius:18px;border:1px solid var(--glass-line);background:var(--glass);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);box-shadow:var(--card-shadow)}
+html.v3 .v2nav a.is-on{background:color-mix(in srgb,var(--amb) 16%,transparent);color:var(--ink);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--amb) 30%,transparent)}
+html.v3 .v2nav a.is-on::after{left:14px;right:14px;bottom:-1px;height:2px;background:var(--amb);box-shadow:0 0 10px 1px var(--amb)}
+html.v3 .v2nav a:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+html.v3 .search{background:color-mix(in srgb,var(--ink) 5%,transparent);border-color:var(--line);box-shadow:none}
+html.v3 .search:focus-within{border-color:var(--amb);box-shadow:0 0 0 3px var(--amb-soft)}
+html.v3 .seg{background:color-mix(in srgb,var(--ink) 6%,transparent);border-color:var(--line)}
+html.v3 .simnote{width:min(calc(var(--sheet) - 76px),calc(100% - 40px));margin-top:16px!important}
+html.v3 .simnote::before{background:var(--amb);box-shadow:0 0 0 3px var(--amb-soft),0 0 10px var(--amb)}
+html.v3 :focus-visible{outline-color:var(--amb)}
+
+/* ---------- glass surfaces ---------- */
+html.v3 .card,html.v3 .v2t,html.v3 .v2replay,html.v3 .glo .gi,html.v3 .cc{background:var(--glass);border:1px solid var(--glass-line);backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3);box-shadow:var(--card-shadow)}
+html.v3 .card,html.v3 .cc,html.v3 .v2t{border-radius:22px}
+html.v3 .cc:hover{border-color:color-mix(in srgb,var(--amb) 55%,transparent);box-shadow:var(--card-shadow-hi),0 0 0 1px color-mix(in srgb,var(--amb) 25%,transparent)}
+html.v3 .tile{background:color-mix(in srgb,var(--amb) 14%,transparent);border-color:color-mix(in srgb,var(--amb) 34%,transparent);color:var(--amb-ink);box-shadow:inset 0 1px 0 var(--glass-hi)}
+html.v3 .eyebrow{color:var(--amb-ink)}
+html.v3 .eyebrow .dot{background:var(--amb);box-shadow:0 0 0 3px var(--amb-soft),0 0 12px var(--amb)}
+html.v3 .btn{background:var(--glass);border-color:var(--glass-line);backdrop-filter:blur(10px)}
+html.v3 .btn.ink{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+html.v3 .stage,html.v3 .cc .media,html.v3 .v2map{background:var(--map-unk)}
+html.v3 .rrnote{background:color-mix(in srgb,var(--amb) 10%,transparent);border:1px solid color-mix(in srgb,var(--amb) 22%,transparent)}
+
+/* the light strip: hugs the bottom edge at night, the top edge by day */
+html.v3 .v2replay,html.v3 .v2t.is-me,html.v3 .stagecard{position:relative;overflow:visible}
+html.v3 .v2replay::after,html.v3 .v2t.is-me::after,html.v3 .stagecard::after{content:"";position:absolute;inset:-2px;border-radius:inherit;border:2px solid var(--amb2);pointer-events:none;filter:drop-shadow(0 0 6px var(--amb)) drop-shadow(0 0 18px var(--amb));
+  -webkit-mask-image:linear-gradient(to top,#000 0,#000 10px,transparent 46px);mask-image:linear-gradient(to top,#000 0,#000 10px,transparent 46px)}
+html.v3[data-theme="light"] .v2replay::after,html.v3[data-theme="light"] .v2t.is-me::after,html.v3[data-theme="light"] .stagecard::after{-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 10px,transparent 46px);mask-image:linear-gradient(to bottom,#000 0,#000 10px,transparent 46px)}
+html.v3 .v2replay{box-shadow:var(--card-shadow-hi)}
+html.v3[data-theme="dark"] .v2replay,html.v3[data-theme="dark"] .v2t.is-me{background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.03) 55%,color-mix(in srgb,var(--amb) 16%,transparent))}
+html.v3[data-theme="light"] .v2replay,html.v3[data-theme="light"] .v2t.is-me{background:linear-gradient(180deg,color-mix(in srgb,var(--amb) 22%,rgba(255,255,255,.8)),rgba(255,255,255,.72) 45%,rgba(255,255,255,.56))}
+html.v3 .v2t.is-me{border-color:var(--glass-line)}
+html.v3 .v2t.is-me::before{display:none}
+html.v3 .stagecard{overflow:visible}html.v3 .stagecard>*:first-child{border-radius:22px 22px 0 0}
+
+/* ---------- page heads ---------- */
+html.v3 .shead,html.v3 .v2hero{background:none;border-bottom:0}
+html.v3 .shead::before,html.v3 .v2hero::before{background:linear-gradient(var(--line) 1px,transparent 1px) 0 -1px/100% 32px,linear-gradient(90deg,var(--line) 1px,transparent 1px) -1px 0/32px 100%;opacity:.7}
+html.v3 .v2hero h1,html.v3 .shead .h{font-weight:720;letter-spacing:-.045em}
+html.v3 .v2hero h1 em{color:transparent;background:linear-gradient(92deg,var(--amb2),var(--amb) 55%,var(--accent));-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 22px var(--amb-soft))}
+html.v3 .v2hero h1 em::after{display:none}
+html.v3 .v2live{color:var(--amb-ink)}html.v3 .v2live i{background:var(--amb);box-shadow:0 0 0 3px var(--amb-soft),0 0 10px var(--amb)}
+html.v3 .v2say,html.v3 .v2o,html.v3 .v2r-h button{background:color-mix(in srgb,var(--surface) 70%,transparent);border-color:var(--line)}
+html.v3 .v2say .v2mic{background:color-mix(in srgb,var(--ink) 8%,transparent)}
+html.v3 .v2say.is-speaking .v2mic{background:var(--amb-soft);color:var(--amb-ink)}html.v3 .v2say .v2mic::after{border-color:var(--amb)}
+html.v3 .v2say b .v2caret,html.v3 .v2map .v2bar,html.v3 .v2dots button.is-on{background:var(--amb);box-shadow:0 0 10px var(--amb)}
+html.v3 .v2kind,html.v3 .v2dots button{background:color-mix(in srgb,var(--ink) 10%,transparent)}
+
+/* ---------- dot-matrix numbers ---------- */
+html.v3 .v3mx{display:inline-block;line-height:0;vertical-align:baseline}
+html.v3 .v3mx svg{display:block;height:var(--mh,34px);width:auto;overflow:visible}
+html.v3 .v3mx .on{fill:currentColor}html.v3 .v3mx .off{fill:currentColor;opacity:.055}
+html.v3[data-theme="dark"] .v3mx svg{filter:drop-shadow(0 0 5px color-mix(in srgb,currentColor 55%,transparent))}
+html.v3 .v2t .v2num{align-items:flex-end;gap:10px;margin-top:12px}
+html.v3 .v2t .v2num .v3mx{--mh:40px;color:var(--ink)}
+html.v3 .v2t.is-me .v2num .v3mx{--mh:50px;color:var(--amb-ink)}
+html.v3[data-theme="dark"] .v2t.is-me .v2num .v3mx{color:var(--amb2)}
+html.v3 .v2facts dt .v3mx{--mh:26px}html.v3 .v2facts dt .v3mx .off{display:none}html.v3 .v2facts dd{margin-top:9px}
+html.v3 .v2t .v2meter{height:5px;background:color-mix(in srgb,var(--ink) 9%,transparent);overflow:visible;margin-top:10px}
+html.v3 .v2t .v2meter u{box-shadow:0 0 10px -1px var(--c)}
+
+/* ---------- controls and lanes ---------- */
+html.v3 .atoc.rkm{background:color-mix(in srgb,var(--ink) 6%,transparent);border-color:var(--line)}
+html.v3 .atoc.rkm a.on{background:color-mix(in srgb,var(--ink) 12%,transparent);box-shadow:inset 0 1px 0 var(--glass-hi),0 0 0 1px var(--line)}
+html.v3[data-theme="light"] .atoc.rkm a.on{background:#fff}
+html.v3 .atoc.rks a{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+html.v3 .atoc.rks a.on{background:var(--amb-soft);color:var(--amb-ink);border-color:color-mix(in srgb,var(--amb) 45%,transparent)}
+html.v3 .rkbars .row::before,html.v3 .homecat .row::before,html.v3 .rkbars .row.me::before,html.v3 .homecat .row.me::before{background:color-mix(in srgb,var(--ink) 8%,transparent);height:8px;margin-top:-4px}
+html.v3 .rkbars .row .share,html.v3 .homecat .row .share{height:8px;margin-top:-4px;box-shadow:0 0 12px -2px var(--c)}
+html.v3 .rkbars .row.me,html.v3 .homecat .row.me{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 13%,transparent),transparent 80%)}
+html.v3 .rkbars .row.me .share,html.v3 .homecat .row.me .share{box-shadow:0 0 16px -1px var(--accent)}
+html.v3 .rkbars .row:hover,html.v3 .homecat .row:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+html.v3 .row.me .val .pc{color:var(--accent)}
+html.v3 .presets button,html.v3 .chip{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+html.v3 .armrow:hover,html.v3 table.s10t tbody tr:hover td{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+html.v3 .play{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 18%,transparent),0 0 24px -2px var(--accent)}
+@media (max-width:640px){html.v3 .rkbars .row::before,html.v3 .homecat .row::before,html.v3 .rkbars .row .share,html.v3 .homecat .row .share{margin-top:0}}
+@media (max-width:860px){html.v3 .top,html.v3:not([data-nav="rail"]) .top{width:calc(100% - 16px);top:8px;margin-top:8px}}
+html.v3 .v2t .v2num{flex-wrap:wrap;row-gap:6px}html.v3 .v2t .v2num span{white-space:nowrap}
+html.v3 .v2t:not(.is-me) .v2num .v3mx{--mh:34px}
+
+/* ===== day mode, second pass: clear daylight instead of grey-beige — warm sun top-right, a little cool sky bottom-left, crisp white glass ===== */
+html.v3[data-theme="light"]{
+  --sand2:#F4F1EC;--sand3:#EBE7E0;--sand4:#E2DDD5;--sand12:#1B1915;--sand11:#57534B;--sand9:#8C877D;
+  --bg:#F5F2EC;--canvas:#F5F2EC;--surface:#FFFFFF;--line:rgba(84,62,28,.12);--line2:rgba(84,62,28,.2);
+  --amb:#FF7A1A;--amb2:#FFB24D;--amb-soft:rgba(255,128,30,.20);--amb-ink:#C2410C;
+  --glass:linear-gradient(180deg,#FFFFFF,rgba(255,255,255,.80));--glass-line:rgba(255,255,255,.95);--glass-hi:#fff;
+  --card-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(84,62,28,.06),0 1px 2px rgba(84,62,28,.06),0 22px 44px -26px rgba(122,78,24,.38);
+  --card-shadow-hi:inset 0 1px 0 #fff,0 0 0 1px rgba(84,62,28,.07),0 2px 6px rgba(84,62,28,.07),0 44px 80px -36px rgba(122,78,24,.5);
+  --map-unk:#F7F4EF;--map-free:#FFFFFF;--map-wall:#1B1915;--map-grid:rgba(84,62,28,.07);--dot:rgba(84,62,28,.11);
+}
+html.v3[data-theme="light"]:not([data-nav="rail"]) .main{background:
+  radial-gradient(46% 40% at 88% -4%,rgba(255,176,64,.50),transparent 66%),
+  radial-gradient(34% 30% at 62% -8%,rgba(255,112,72,.20),transparent 70%),
+  radial-gradient(48% 46% at -6% 64%,rgba(120,150,255,.16),transparent 66%),
+  radial-gradient(50% 40% at 70% 110%,rgba(255,160,70,.16),transparent 62%),
+  radial-gradient(circle,var(--dot) 1px,transparent 1.3px) 0 0/24px 24px,var(--bg);background-attachment:fixed,fixed,fixed,fixed,scroll,scroll}
+html.v3[data-theme="light"] .v2hero h1 em{background:linear-gradient(96deg,#FFA31F,#FF5A0A 60%,#F0340A);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 6px 18px rgba(255,110,20,.28))}
+html.v3[data-theme="light"] .v2replay,html.v3[data-theme="light"] .v2t.is-me{background:linear-gradient(180deg,#FFF1DC 0,#FFFBF5 30%,#FFFFFF 60%)}
+html.v3[data-theme="light"] .v2replay::after,html.v3[data-theme="light"] .v2t.is-me::after,html.v3[data-theme="light"] .stagecard::after{border-color:#FFB24D;filter:drop-shadow(0 0 5px #FF9A2E) drop-shadow(0 -4px 16px rgba(255,140,40,.7))}
+html.v3[data-theme="light"] .top{background:rgba(255,255,255,.78)}
+html.v3[data-theme="light"] .v2say,html.v3[data-theme="light"] .v2o,html.v3[data-theme="light"] .v2r-h button{background:#fff;border-color:var(--line)}
+html.v3[data-theme="light"] .v2say{box-shadow:0 1px 2px rgba(84,62,28,.06),0 12px 26px -16px rgba(122,78,24,.45)}
+html.v3[data-theme="light"] .v2map{background:var(--map-unk);box-shadow:inset 0 1px 3px rgba(84,62,28,.08)}
+html.v3[data-theme="light"] .v3mx .off{display:none}
+html.v3[data-theme="light"] .v2t.is-me .v2num .v3mx{color:#E8480A}
+html.v3[data-theme="light"] .v2t .v2num .v3mx{color:#1B1915}
+html.v3[data-theme="light"] .btn{background:#fff;border-color:var(--line)}
+html.v3[data-theme="light"] .btn.ink{background:#1B1915;border-color:#1B1915;color:#fff}
+html.v3[data-theme="light"] .tile{background:linear-gradient(180deg,#FFF3E0,#FFE6C7);border-color:#FFD29C}
+html.v3[data-theme="light"] .atoc.rks a.on{background:#FFECD6;border-color:#FFC78A}
+html.v3[data-theme="light"] .v2nav a.is-on{background:#FFF0DD;box-shadow:inset 0 0 0 1px #FFD4A3}
+/* both themes: the count sits under the number, so the four tiles line up */
+html.v3 .v2t .v2num{flex-direction:column;align-items:flex-start;gap:9px}
+html.v3[data-theme="light"] .v3mx .on{stroke:currentColor;stroke-width:.16;stroke-linejoin:round}
